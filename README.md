@@ -2,7 +2,7 @@
 1. take the contenst of the "addons" folder and move them to an addons folder in your project. 
 2. add an environment node, add a compositor effect to it, and to it, add a new MotionBlurSphynxJumpFlood
 
-#Demo Repo
+# Demo Repo
 you can find a working demo repository here:
 https://github.com/sphynx-owner/JFA_driven_motion_blur_demo
 
