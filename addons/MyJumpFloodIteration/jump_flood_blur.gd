@@ -53,6 +53,14 @@ class_name MotionBlurSphynxJumpFlood
 ## target_constant_framerate
 @export var framerate_independent : bool = true
 
+## Description: Removes clamping on motion blur scale to allow framerate independent motion
+## blur to scale longer than realistically possible when render framerate is higher
+## than target framerate.[br][br]
+## [color=yellow]Warning:[/color] Turning this on would allow over-blurring of pixels, which 
+## produces inaccurate results, and would likely cause nausea in players over
+## long exposure durations, use with caution and out of artistic intent
+@export var uncapped_independence : bool = false
+
 ## if framerate_independent is enabled, the blur would simulate 
 ## sutter speeds at that framerate, and up.
 @export var target_constant_framerate : float = 30
@@ -138,8 +146,6 @@ func get_sampler_uniform(image: RID, binding: int) -> RDUniform:
 	uniform.add_id(image)
 	return uniform
 
-
-
 var temp_motion_blur_intensity : float
 
 var previous_time : float = 0
@@ -154,7 +160,11 @@ func _render_callback(p_effect_callback_type, p_render_data):
 	temp_motion_blur_intensity = motion_blur_intensity
 	
 	if framerate_independent:
-		var capped_frame_time : float = min(1 / target_constant_framerate, delta_time)
+		var capped_frame_time : float = 1 / target_constant_framerate
+		
+		if !uncapped_independence:
+			capped_frame_time = min(capped_frame_time, delta_time)
+		
 		temp_motion_blur_intensity = motion_blur_intensity * capped_frame_time / delta_time
 	
 	if rd and p_effect_callback_type == CompositorEffect.EFFECT_CALLBACK_TYPE_POST_TRANSPARENT:
