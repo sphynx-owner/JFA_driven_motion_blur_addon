@@ -159,7 +159,7 @@ void main()
 		return;
 	}
 
-	vec2 uvn = (vec2(uvi) + vec2(0.5)) / render_size;
+	vec2 uvn = vec2(uvi) / render_size;
 
 	int iteration_count = int(params.motion_blur_samples);
 
@@ -182,7 +182,9 @@ void main()
 		return;
 	}
 	
-	float velocity_step_coef = min(params.motion_blur_intensity, max_dialtion_radius / (length(velocity) * params.motion_blur_intensity)) / max(1.0, params.motion_blur_samples - 1.0) * (1 + (interleaved_gradient_noise(uvi, int(params.frame)) - 0.5));
+	float noise_offset = (interleaved_gradient_noise(uvi, int(params.frame)) - 1);
+
+	float velocity_step_coef = min(params.motion_blur_intensity, max_dialtion_radius / (length(velocity) * params.motion_blur_intensity)) / max(1.0, params.motion_blur_samples - 1.0);
 
 	vec3 sample_step = velocity * velocity_step_coef;
 
@@ -193,7 +195,7 @@ void main()
 
 	float total_weight = 1;// max(0.0001, length(naive_velocity));
 	
-	vec2 offset = vec2(0.0);
+	vec2 offset = vec2(sample_step * noise_offset);
 	
 	vec4 col = base * total_weight;
 

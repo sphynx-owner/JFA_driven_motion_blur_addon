@@ -35,15 +35,19 @@ class_name MotionBlurSphynxJumpFlood
 @export var sample_step_multiplier : float = 8
 
 ## how sensitive the backtracking for velocities be
-@export var backtracking_velocity_match_threshold : float = 0.49
+@export var backtracking_velocity_match_threshold : float = 0.9
 
 ## how sensitively the backtracking should treat velocities that are a different
 ## length along that velocity
-@export var backtracking_velocity_match_parallel_sensitivity : float = 0.5;
+@export var backtracking_velocity_match_parallel_sensitivity : float = 1
 
 ## how sensitively the backtracking should treat velcoities that have perpendicular
 ## offset to that velocity
-@export var backtracking_velcoity_match_perpendicular_sensitivity : float = 0.1;
+@export var backtracking_velcoity_match_perpendicular_sensitivity : float = 0.05
+
+## how closely does the depth of the backtracked sample has to match the original sample to be
+## considered (in NDC space)
+@export var backtracbing_depth_match_threshold : float = 0.001
 
 ## the number of passes performed by the jump flood algorithm based dilation, 
 ## each pass added doubles the maximum radius of dilation available
@@ -236,7 +240,7 @@ func _render_callback(p_effect_callback_type, p_render_data):
 						backtracking_velocity_match_threshold,
 						backtracking_velocity_match_parallel_sensitivity,
 						backtracking_velcoity_match_perpendicular_sensitivity,
-						0,
+						backtracbing_depth_match_threshold,
 						0
 					]
 					

@@ -23,7 +23,7 @@ layout(push_constant, std430) uniform Params
 	float velocity_match_threshold;
 	float parallel_sensitivity;
 	float perpendicular_sensitivity;
-	float nan3;
+	float depth_match_threshold;
 	float nan4;
 } params;
 
@@ -144,6 +144,14 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4
 
 	float general_velocity_multiplier = min(best_sample_fitness.y, max_dilation_radius);
 
+	vec2 best_uv = chosen_uv;
+
+	float best_velocity_match_threshold = params.velocity_match_threshold;
+
+	int initial_steps_to_compare = 2;
+
+	int steps_to_compare = initial_steps_to_compare;
+
 	for(int i = -step_count; i < step_count + 1; i++)
 	{
 		float velocity_multiplier = general_velocity_multiplier * (1 + float(i) /  float(step_count));
@@ -153,7 +161,7 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4
 			continue;
 		}
 
-		vec2 new_sample = uvn - chosen_velocity * velocity_multiplier;
+		vec2 new_sample = round((uvn - chosen_velocity * velocity_multiplier) * render_size) / render_size;
 
 		if((new_sample.x < 0.) || (new_sample.x > 1.) || (new_sample.y < 0.) || (new_sample.y > 1.))
 		{
@@ -162,11 +170,25 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4
 
 		vec2 velocity_test = textureLod(velocity_sampler, new_sample, 0.0).xy;
 		
-		if(get_motion_difference(chosen_velocity, velocity_test, params.parallel_sensitivity, params.perpendicular_sensitivity) <= params.velocity_match_threshold)
+		float depth_test = textureLod(depth_sampler, new_sample, 0.0).x;
+
+		float velocity_match = get_motion_difference(chosen_velocity, velocity_test, params.parallel_sensitivity, params.perpendicular_sensitivity);
+
+		if((abs(depth_test - npd / best_sample_fitness.z) < params.depth_match_threshold) && (velocity_match <= best_velocity_match_threshold))
 		{
-			chosen_uv = new_sample;
-			best_sample_fitness.x = velocity_multiplier;
-			return vec4(chosen_uv, best_sample_fitness.x, 0);
+			best_uv = new_sample;
+			if(steps_to_compare == 0)
+			{
+				chosen_uv = best_uv;
+				best_velocity_match_threshold = velocity_match;
+				return vec4(chosen_uv, 0, 0);
+			}
+			steps_to_compare--;
+		}
+		else if(initial_steps_to_compare > steps_to_compare)
+		{
+			chosen_uv = best_uv;
+			return vec4(chosen_uv, 0, 0);
 		}
 	}
 	
@@ -181,7 +203,7 @@ void main()
 	{
 		return;
 	}
-	vec2 uvn = (vec2(uvi) + vec2(0.5)) / render_size;
+	vec2 uvn = (vec2(uvi)) / render_size;
 
 	int iteration_index = params.iteration_index;
 
