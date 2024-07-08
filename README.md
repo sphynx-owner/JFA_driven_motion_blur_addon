@@ -7,7 +7,7 @@ you can find a working demo repository here:
 https://github.com/sphynx-owner/JFA_driven_motion_blur_demo
 
 # Sources
-for a better overview of the subject heres a video I made on it:
+for a better overview of the subject here's a video I made on it:
 https://youtu.be/m_KvYlYF3sA
 and heres a paper I wrote on it:
 [Using.the.Jump.Flood.Algorithm.to.Dilate.Velocity.Maps.in.the.application.of.Believable.High.Range.High.Fidelity.Motion.Blur.7_7_24.2.-.Google.Docs.pdf](https://github.com/user-attachments/files/16120346/Using.the.Jump.Flood.Algorithm.to.Dilate.Velocity.Maps.in.the.application.of.Believable.High.Range.High.Fidelity.Motion.Blur.7_7_24.2.-.Google.Docs.pdf)
