@@ -195,7 +195,7 @@ void main()
 
 	float total_weight = 1;// max(0.0001, length(naive_velocity));
 	
-	vec2 offset = vec2(0);
+	vec2 offset = vec2(sample_step * noise_offset);
 	
 	vec4 col = base * total_weight;
 
