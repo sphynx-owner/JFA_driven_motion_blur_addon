@@ -161,7 +161,7 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4
 			continue;
 		}
 
-		vec2 new_sample = round((uvn - chosen_velocity * velocity_multiplier) * render_size) / render_size;
+		vec2 new_sample = uvn - chosen_velocity * velocity_multiplier;
 
 		if((new_sample.x < 0.) || (new_sample.x > 1.) || (new_sample.y < 0.) || (new_sample.y > 1.))
 		{
@@ -203,7 +203,7 @@ void main()
 	{
 		return;
 	}
-	vec2 uvn = (vec2(uvi)) / render_size;
+	vec2 uvn = (vec2(uvi) + vec2(0.5)) / render_size;
 
 	int iteration_index = params.iteration_index;
 

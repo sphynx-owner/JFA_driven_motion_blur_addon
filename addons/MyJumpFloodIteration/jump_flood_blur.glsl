@@ -159,7 +159,7 @@ void main()
 		return;
 	}
 
-	vec2 uvn = vec2(uvi) / render_size;
+	vec2 uvn = vec2(uvi + vec2(0.5)) / render_size;
 
 	int iteration_count = int(params.motion_blur_samples);
 
@@ -195,7 +195,7 @@ void main()
 
 	float total_weight = 1;// max(0.0001, length(naive_velocity));
 	
-	vec2 offset = vec2(sample_step * noise_offset);
+	vec2 offset = vec2(0);
 	
 	vec4 col = base * total_weight;
 
