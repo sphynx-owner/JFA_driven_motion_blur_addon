@@ -3,8 +3,6 @@
 
 #define FLT_MAX 3.402823466e+38
 #define FLT_MIN 1.175494351e-38
-#define DBL_MAX 1.7976931348623158e+308
-#define DBL_MIN 2.2250738585072014e-308
 
 layout(set = 0, binding = 0) uniform sampler2D depth_sampler;
 layout(set = 0, binding = 1) uniform sampler2D velocity_sampler;
@@ -15,7 +13,7 @@ layout(push_constant, std430) uniform Params
 {
 	int iteration_index;
 	int last_iteration_index;
-	int nan1;
+	int backtracking_sample_count;
 	int nan2;	
 	float perpen_error_thresh;
 	float sample_step_multiplier;
@@ -81,9 +79,9 @@ void set_value(bool a, ivec2 uvi, vec4 value, ivec2 render_size)
 float get_motion_difference(vec2 V, vec2 V2, float parallel_sensitivity, float perpendicular_sensitivity)
 {
 	vec2 VO = V - V2;
-	double parallel = abs(dot(VO, V) / max(DBL_MIN, dot(V, V)));
+	float parallel = abs(dot(VO, V) / max(FLT_MIN, dot(V, V)));
 	vec2 perpen_V = vec2(V.y, -V.x);
-	double perpendicular = abs(dot(VO, perpen_V) / max(DBL_MIN, dot(V, V)));
+	float perpendicular = abs(dot(VO, perpen_V) / max(FLT_MIN, dot(V, V)));
 	float difference = float(parallel) * parallel_sensitivity + float(perpendicular) * perpendicular_sensitivity;
 	return clamp(difference, 0, 1);
 }
@@ -103,19 +101,19 @@ vec4 sample_fitness(vec2 uv_offset, vec4 uv_sample)
 //		uv_offset = normalize(sample_velocity) * FLT_MIN;
 //	}
 
-	double velocity_space_distance = dot(sample_velocity, uv_offset) / max(FLT_MIN, dot(sample_velocity, sample_velocity));
+	float velocity_space_distance = dot(sample_velocity, uv_offset) / max(FLT_MIN, dot(sample_velocity, sample_velocity));
 
-	double mid_point = params.motion_blur_intensity / 2;
+	float mid_point = params.motion_blur_intensity / 2;
 
-	double absolute_velocity_space_distance = abs(velocity_space_distance - mid_point);
+	float absolute_velocity_space_distance = abs(velocity_space_distance - mid_point);
 
-	double within_velocity_range = step(absolute_velocity_space_distance, mid_point);
+	float within_velocity_range = step(absolute_velocity_space_distance, mid_point);
 	
 	vec2 perpen_offset = vec2(uv_offset.y, -uv_offset.x);
 
-	double side_offset = abs(dot(perpen_offset, sample_velocity)) / max(FLT_MIN, dot(sample_velocity, sample_velocity));
+	float side_offset = abs(dot(perpen_offset, sample_velocity)) / max(FLT_MIN, dot(sample_velocity, sample_velocity));
 	
-	double within_perpen_error_range = step(side_offset, params.perpen_error_thresh * params.motion_blur_intensity);
+	float within_perpen_error_range = step(side_offset, params.perpen_error_thresh * params.motion_blur_intensity);
 
 	return vec4(absolute_velocity_space_distance, velocity_space_distance, uv_sample.z, within_velocity_range * within_perpen_error_range);
 }
@@ -135,8 +133,6 @@ bool is_sample_better(vec4 a, vec4 b)
 vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4 best_sample_fitness, vec2 render_size)
 {
 	//return vec4(chosen_uv, best_sample_fitness.x, 0);// comment this to enable backtracking
-	
-	int step_count = 16;
 
 	float smallest_step = 1 / max(render_size.x, render_size.y);
 
@@ -152,9 +148,9 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec2 chosen_velocity, vec4
 
 	int steps_to_compare = initial_steps_to_compare;
 
-	for(int i = -step_count; i < step_count + 1; i++)
+	for(int i = -params.backtracking_sample_count; i < params.backtracking_sample_count + 1; i++)
 	{
-		float velocity_multiplier = general_velocity_multiplier * (1 + float(i) /  float(step_count));
+		float velocity_multiplier = general_velocity_multiplier * (1 + float(i) /  float(params.backtracking_sample_count));
 
 		if(velocity_multiplier > params.motion_blur_intensity + 0.2 || velocity_multiplier < FLT_MIN)
 		{

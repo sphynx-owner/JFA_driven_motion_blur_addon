@@ -118,9 +118,14 @@ float get_velocity_curl(vec2 uv, vec2 render_size)
 
 // McGuire's functions https://docs.google.com/document/d/1IIlAKTj-O01hcXEdGxTErQbCHO9iBmRx6oFUy_Jm0fI/edit
 // ----------------------------------------------------------
+// This function would return 1 if depth_x is bigger than depth_y by sze amount. meaning, it would return 1 if x is closer to camera
 float soft_depth_compare(float depth_X, float depth_Y)
 {
 	return clamp(1 - (depth_X - depth_Y) / sze, 0, 1);
+}
+float soft_depth_compare_custom(float depth_X, float depth_Y, float csze)
+{
+	return clamp(1 - (depth_X - depth_Y) / csze, 0, 1);
 }
 
 float cone(vec2 X, vec2 Y, vec2 v)
@@ -173,9 +178,9 @@ void main()
 
 	vec3 naive_velocity = -textureLod(vector_sampler, uvn, 0.0).xyz;
 
-	float max_dialtion_radius = pow(2, params.last_iteration_index) * params.sample_step_multiplier / max(render_size.x, render_size.y);
+	float max_dialtion_radius = pow(2, params.last_iteration_index) * params.sample_step_multiplier * 2 / max(render_size.x, render_size.y);
 
-	if ((dot(velocity, velocity) == 0 || params.motion_blur_intensity == 0) && params.debug == 0) //(uvn.y > 0.5)//
+	if ((dot(velocity, velocity) == 0 || params.motion_blur_intensity == 0) && params.debug == 0)
 	{
 		imageStore(output_image, uvi, base);
 		imageStore(past_color_image, uvi, base);
@@ -193,19 +198,21 @@ void main()
 	//float d = 1.0 - min(1.0, 2.0 * distance(uvn, vec2(0.5)));
 	//sample_step *= 1.0 - d * params.fade_padding.x;
 
-	float total_weight = 1;// max(0.0001, length(naive_velocity));
+	float total_weight = 1;
 	
-	vec2 offset = vec2(sample_step * noise_offset);
+	vec2 offset = vec2(sample_step * noise_offset);//vec2(0);//
 	
 	vec4 col = base * total_weight;
 
 	float depth = max(FLT_MIN, textureLod(depth_sampler, velocity_map_sample.xy, 0.0).x);
 
 	float naive_depth = max(FLT_MIN, textureLod(depth_sampler, uvn, 0.0).x);
-
+	
+	float naive_background = soft_depth_compare_custom(depth, naive_depth, 0.0001);
+	
 	for (int i = 1; i < iteration_count; i++) 
 	{
-		offset += sample_step.xy;// * interleaved_gradient_noise(uvi, int(params.frame) + i);
+		offset += sample_step.xy;
 
 		vec2 uvo = uvn + offset;
 
@@ -220,17 +227,23 @@ void main()
 
 		float current_depth = max(FLT_MIN, textureLod(depth_sampler, velocity_map_sample_step.xy, 0.0).x);
 
-		float sample_weight = 1;
+		float current_naive_depth = max(FLT_MIN, textureLod(depth_sampler, uvo, 0.0).x);
 
 		float motion_difference = get_motion_difference(velocity.xy, current_velocity.xy, 0.1);
 
 		float foreground = soft_depth_compare(npd / current_depth, npd / depth);
 
+		float naive_foreground = soft_depth_compare(npd / current_naive_depth - sze, npd / depth);//soft_depth_compare_custom(depth, current_naive_depth, 0.0001);//
+
+		float sample_weight = 1;
+
 		sample_weight *= 1 - (foreground * motion_difference);
 
 		total_weight += sample_weight;
 
-		col += textureLod(color_sampler, uvo, 0.0) * sample_weight;
+		vec2 sample_uv = mix(uvo, uvn, 1 - max(naive_background, naive_foreground));//uvo;//
+
+		col += textureLod(color_sampler, sample_uv, 0.0) * sample_weight;
 	}
 
 	col /= total_weight;
@@ -244,7 +257,7 @@ void main()
 
 	vec4 tl_col = vec4(abs(textureLod(vector_sampler, uvn, 0.0).xy) * 10, 0, 1);
 
-	vec4 tr_col = vec4(abs(velocity.xy) * 10, 0, 1);
+	vec4 tr_col = vec4(abs(velocity.xy) * 10, 0, 1);//vec4(naive_background);//
 
 	vec4 bl_col = vec4(abs(velocity_map_sample.xyw - vec3(uvn, 0)) * vec3(10, 10, 1), 1);
 

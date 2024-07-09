@@ -31,8 +31,14 @@ class_name MotionBlurSphynxJumpFlood
 @export var perpen_error_threshold : float = 0.3
 
 ## an initial step size that can increase the dilation radius proportionally, at the 
-## sacrifice of some quality in the final resolution of the dilation
+## sacrifice of some quality in the final resolution of the dilation.[br][br]
+## the formula for the maximum radius of the dilation (in pixels) is: pow(2, JFA_pass_count) * sample_step_multiplier
 @export var sample_step_multiplier : float = 8
+
+## how many steps along a range of 2 velocities from the 
+## dilation target velocity space do we go along to find a better fitting velocity sample
+## higher samples meaning higher detail getting captured and blurred
+@export var backtracking_sample_count : int = 8
 
 ## how sensitive the backtracking for velocities be
 @export var backtracking_velocity_match_threshold : float = 0.9
@@ -50,7 +56,8 @@ class_name MotionBlurSphynxJumpFlood
 @export var backtracbing_depth_match_threshold : float = 0.001
 
 ## the number of passes performed by the jump flood algorithm based dilation, 
-## each pass added doubles the maximum radius of dilation available
+## each pass added doubles the maximum radius of dilation available.[br][br]
+## the formula for the maximum radius of the dilation (in pixels) is: pow(2, JFA_pass_count) * sample_step_multiplier
 @export var JFA_pass_count : int = 3
 
 ## wether this motion blur stays the same intensity below
@@ -180,8 +187,8 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				return
 			
 			ensure_texture(texture, render_scene_buffers)
-			ensure_texture(buffer_a, render_scene_buffers, true)#, Vector2(0.25, 0.25))
-			ensure_texture(buffer_b, render_scene_buffers, true)#, Vector2(0.25, 0.25))
+			ensure_texture(buffer_a, render_scene_buffers)
+			ensure_texture(buffer_b, render_scene_buffers)
 			ensure_texture(past_color, render_scene_buffers)
 
 			rd.draw_command_begin_label("Motion Blur", Color(1.0, 1.0, 1.0, 1.0))
@@ -229,7 +236,7 @@ func _render_callback(p_effect_callback_type, p_render_data):
 					var jf_push_constants : PackedInt32Array = [
 						i,
 						last_iteration_index,
-						16,
+						backtracking_sample_count,
 						16
 					]
 					
