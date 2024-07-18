@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://yfjbb3iso4jt"
+path="res://.godot/imported/jfp_backtracking_experimental.glsl-d67307f6899fed647164be410a7debc8.res"
+
+[deps]
+
+source_file="res://MyJumpFloodIteration/jfp_backtracking_experimental.glsl"
+dest_files=["res://.godot/imported/jfp_backtracking_experimental.glsl-d67307f6899fed647164be410a7debc8.res"]
+
+[params]
+

@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://b0shum42bqq0y"]
+
+[ext_resource type="Shader" path="res://RadialBlurTest/radial_blur_mesh.gdshader" id="1_20eg7"]
+[ext_resource type="Script" path="res://RadialBlurTest/radial_blur_mesh.gd" id="2_wbael"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pgvyt"]
+height = 0.25
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_stapv"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("1_20eg7")
+shader_parameter/local_rotation_axis = Vector3(0, 1, 0)
+shader_parameter/rotation_speed = 0.0
+shader_parameter/sample_count = 8
+shader_parameter/shape_depth = 1.0
+shader_parameter/shape_radius = 1.0
+shader_parameter/shape_axis_offset = 0.0
+shader_parameter/debug_toggle = 0.0
+shader_parameter/debug_color = Color(1, 0, 0, 0)
+
+[node name="RadialBlurMesh" type="MeshInstance3D"]
+process_priority = 1
+mesh = SubResource("CylinderMesh_pgvyt")
+surface_material_override/0 = SubResource("ShaderMaterial_stapv")
+script = ExtResource("2_wbael")

@@ -32,8 +32,16 @@ class_name MotionBlurSphynxJumpFlood
 
 ## an initial step size that can increase the dilation radius proportionally, at the 
 ## sacrifice of some quality in the final resolution of the dilation.[br][br]
-## the formula for the maximum radius of the dilation (in pixels) is: pow(2, JFA_pass_count) * sample_step_multiplier
-@export var sample_step_multiplier : float = 8
+## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
+@export var sample_step_multiplier : float = 4
+
+## by default, the jump flood makes samples along distances that start
+## at 2 to the power of the pass count you want to perform, which is also 
+## the dilation radius you desire. You can change it to values higher than 
+## 2 with this variable, and reach higher dilation radius at the sacrifice of
+## some accuracy in the dilation.
+## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
+@export var step_exponent_modifier : float = 1
 
 ## how many steps along a range of 2 velocities from the 
 ## dilation target velocity space do we go along to find a better fitting velocity sample
@@ -57,7 +65,7 @@ class_name MotionBlurSphynxJumpFlood
 
 ## the number of passes performed by the jump flood algorithm based dilation, 
 ## each pass added doubles the maximum radius of dilation available.[br][br]
-## the formula for the maximum radius of the dilation (in pixels) is: pow(2, JFA_pass_count) * sample_step_multiplier
+## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
 @export var JFA_pass_count : int = 3
 
 ## wether this motion blur stays the same intensity below
@@ -75,6 +83,14 @@ class_name MotionBlurSphynxJumpFlood
 ## if framerate_independent is enabled, the blur would simulate 
 ## sutter speeds at that framerate, and up.
 @export var target_constant_framerate : float = 30
+
+## wether to display debug views for velocity and depth 
+## buffers
+@export var draw_debug : bool = false
+
+## currently 0 - 1, flip between velocity buffers
+## and depth buffers debug views
+@export var debug_page : int = 0
 
 var rd: RenderingDevice
 
@@ -97,15 +113,12 @@ var buffer_b : StringName = "buffer_b"
 
 var past_color : StringName = "past_color"
 
-var velocity_3D : StringName = "velocity_3D"
-var velocity_curl : StringName = "velocity_curl"
-
-var draw_debug : float = 0
+var custom_velocity : StringName = "custom_velocity"
 
 var freeze : bool = false
 
 func _init():
-	effect_callback_type = CompositorEffect.EFFECT_CALLBACK_TYPE_POST_TRANSPARENT
+	#effect_callback_type = EFFECT_CALLBACK_TYPE_POST_TRANSPARENT
 	needs_motion_vectors = true
 	RenderingServer.call_on_render_thread(_initialize_compute)
 
@@ -178,7 +191,7 @@ func _render_callback(p_effect_callback_type, p_render_data):
 		
 		temp_motion_blur_intensity = motion_blur_intensity * capped_frame_time / delta_time
 	
-	if rd and p_effect_callback_type == CompositorEffect.EFFECT_CALLBACK_TYPE_POST_TRANSPARENT:
+	if rd:
 		var render_scene_buffers: RenderSceneBuffersRD = p_render_data.get_render_scene_buffers()
 		var render_scene_data: RenderSceneDataRD = p_render_data.get_render_scene_data()
 		if render_scene_buffers and render_scene_data:
@@ -190,42 +203,59 @@ func _render_callback(p_effect_callback_type, p_render_data):
 			ensure_texture(buffer_a, render_scene_buffers)
 			ensure_texture(buffer_b, render_scene_buffers)
 			ensure_texture(past_color, render_scene_buffers)
+			ensure_texture(custom_velocity, render_scene_buffers)
 
 			rd.draw_command_begin_label("Motion Blur", Color(1.0, 1.0, 1.0, 1.0))
 			
 			var last_iteration_index : int = JFA_pass_count - 1;
 			
+			var max_dilation_radius : float = pow(2 + step_exponent_modifier, last_iteration_index) * sample_step_multiplier / motion_blur_intensity;
+			
 			var push_constant: PackedFloat32Array = [
 				motion_blur_samples, temp_motion_blur_intensity,
-				motion_blur_center_fade, draw_debug,
+				motion_blur_center_fade, 1 if draw_debug else 0,
 				freeze, 
 				Engine.get_frames_drawn() % 8, 
 				last_iteration_index, 
-				sample_step_multiplier
+				sample_step_multiplier,
+				step_exponent_modifier,
+				max_dilation_radius,
+				0,
+				0
 			]
-
+			var int_push_constant : PackedInt32Array = [
+				debug_page,
+				0,
+				0,
+				0
+			]
+			var byte_array = push_constant.to_byte_array()
+			byte_array.append_array(int_push_constant.to_byte_array())
+			
 			var view_count = render_scene_buffers.get_view_count()
 			for view in range(view_count):
 				var color_image := render_scene_buffers.get_color_layer(view)
 				var depth_image := render_scene_buffers.get_depth_layer(view)
-				var velocity_image := render_scene_buffers.get_velocity_layer(view)
 				var texture_image := render_scene_buffers.get_texture_slice(context, texture, view, 0, 1, 1)
 				var buffer_a_image := render_scene_buffers.get_texture_slice(context, buffer_a, view, 0, 1, 1)
 				var buffer_b_image := render_scene_buffers.get_texture_slice(context, buffer_b, view, 0, 1, 1)
 				var past_color_image := render_scene_buffers.get_texture_slice(context, past_color, view, 0, 1, 1)
+				var custom_velocity_image := render_scene_buffers.get_texture_slice(context, custom_velocity, view, 0, 1, 1)
 				rd.draw_command_begin_label("Construct blur " + str(view), Color(1.0, 1.0, 1.0, 1.0))
 				
 				var tex_uniform_set
 				var compute_list
 				
-				var x_groups := floori((render_size.x - 1) / 8 + 1)
-				var y_groups := floori((render_size.y - 1) / 8 + 1)
+				var x_groups := floori((render_size.x - 1) / 16 + 1)
+				var y_groups := floori((render_size.y - 1) / 16 + 1)
 				
 				tex_uniform_set = UniformSetCacheRD.get_cache(construct_shader, 0, [
 					get_sampler_uniform(depth_image, 0),
-					get_sampler_uniform(velocity_image, 1),
+					get_sampler_uniform(custom_velocity_image, 1),
 					get_image_uniform(buffer_a_image, 2),
 					get_image_uniform(buffer_b_image, 3),
+					get_sampler_uniform(buffer_a_image, 4),
+					get_sampler_uniform(buffer_b_image, 5)
 				])
 				
 				compute_list = rd.compute_list_begin()
@@ -240,6 +270,8 @@ func _render_callback(p_effect_callback_type, p_render_data):
 						16
 					]
 					
+					var step_size : float = round(pow(2 + step_exponent_modifier, last_iteration_index - i)) * sample_step_multiplier;
+					
 					var jf_float_push_constants_test : PackedFloat32Array = [
 						perpen_error_threshold,
 						sample_step_multiplier,
@@ -248,6 +280,10 @@ func _render_callback(p_effect_callback_type, p_render_data):
 						backtracking_velocity_match_parallel_sensitivity,
 						backtracking_velcoity_match_perpendicular_sensitivity,
 						backtracbing_depth_match_threshold,
+						step_exponent_modifier,
+						step_size,
+						max_dilation_radius,
+						0,
 						0
 					]
 					
@@ -266,8 +302,8 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				tex_uniform_set = UniformSetCacheRD.get_cache(motion_blur_shader, 0, [
 					get_sampler_uniform(color_image, 0),
 					get_sampler_uniform(depth_image, 1),
-					get_sampler_uniform(velocity_image, 2),
-					get_image_uniform(buffer_b_image if last_iteration_index % 2 else buffer_a_image, 3),
+					get_sampler_uniform(custom_velocity_image, 2),
+					get_sampler_uniform(buffer_b_image if last_iteration_index % 2 else buffer_a_image, 3),
 					get_image_uniform(texture_image, 4),
 					get_image_uniform(past_color_image, 5),
 				])
@@ -275,7 +311,7 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				compute_list = rd.compute_list_begin()
 				rd.compute_list_bind_compute_pipeline(compute_list, motion_blur_pipeline)
 				rd.compute_list_bind_uniform_set(compute_list, tex_uniform_set, 0)
-				rd.compute_list_set_push_constant(compute_list, push_constant.to_byte_array(), push_constant.size() * 4)
+				rd.compute_list_set_push_constant(compute_list, byte_array, byte_array.size())
 				rd.compute_list_dispatch(compute_list, x_groups, y_groups, 1)
 				rd.compute_list_end()
 				rd.draw_command_end_label()
@@ -297,7 +333,7 @@ func _render_callback(p_effect_callback_type, p_render_data):
 			rd.draw_command_end_label()
 
 
-func ensure_texture(texture_name : StringName, render_scene_buffers : RenderSceneBuffersRD, high_accuracy : bool = false, render_size_multiplier : Vector2 = Vector2(1, 1)):
+func ensure_texture(texture_name : StringName, render_scene_buffers : RenderSceneBuffersRD, texture_format : RenderingDevice.DataFormat = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, high_accuracy : bool = false, render_size_multiplier : Vector2 = Vector2(1, 1)):
 	var render_size : Vector2 = Vector2(render_scene_buffers.get_internal_size()) * render_size_multiplier
 	
 	if render_scene_buffers.has_texture(context, texture_name):
@@ -307,5 +343,4 @@ func ensure_texture(texture_name : StringName, render_scene_buffers : RenderScen
 
 	if !render_scene_buffers.has_texture(context, texture_name):
 		var usage_bits: int = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
-		var texture_format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT if high_accuracy else RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 		render_scene_buffers.create_texture(context, texture_name, texture_format, usage_bits, RenderingDevice.TEXTURE_SAMPLES_1, render_size, 1, 1, true)

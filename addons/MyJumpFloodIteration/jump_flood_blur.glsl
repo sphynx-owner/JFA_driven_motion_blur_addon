@@ -9,8 +9,8 @@
 layout(set = 0, binding = 0) uniform sampler2D color_sampler;
 layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
 layout(set = 0, binding = 2) uniform sampler2D vector_sampler;
-layout(rgba16f, set = 0, binding = 3) uniform readonly image2D velocity_map;
-layout(rgba16f, set = 0, binding = 4) uniform image2D output_image;
+layout(set = 0, binding = 3) uniform sampler2D velocity_map;
+layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D output_image;
 layout(rgba16f, set = 0, binding = 5) uniform image2D past_color_image;
 
 layout(push_constant, std430) uniform Params 
@@ -23,18 +23,17 @@ layout(push_constant, std430) uniform Params
 	float frame;
 	float last_iteration_index;
 	float sample_step_multiplier;
+	float step_exponent_modifier;
+	float max_dilation_radius;
+	float nan_fl_3;
+	float nan_fl_4;
+	int debug_page;
+	int nan1;
+	int nan2;
+	int nan3;
 } params;
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-// velocity similarity divisors
-float vsim_parallel = 20;
-float vsim_perpendicular = 20;
-
-// for velocity similarity check
-float depth_bias = 0.1;
-
-// sample weight threshold
-float sw_threshold = 0.1;
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 // near plane distance
 float npd = 0.05;
@@ -44,14 +43,6 @@ float sze = 0.1;
 
 // Helper functions
 // --------------------------------------------
-vec2 get_depth_difference_at_derivative(vec2 uv, vec2 step_size)
-{
-	float base = textureLod(depth_sampler, uv, 0.0).x;
-	float x = textureLod(depth_sampler, uv + vec2(0, step_size.x), 0.0).x;
-	float y = textureLod(depth_sampler, uv + vec2(step_size.y, 0), 0.0).x;
-	return vec2(x - base, y - base);
-}
-
 // from https://www.shadertoy.com/view/ftKfzc
 float interleaved_gradient_noise(vec2 uv, int FrameId){
 	uv += float(FrameId)  * (vec2(47, 17) * 0.695);
@@ -60,94 +51,23 @@ float interleaved_gradient_noise(vec2 uv, int FrameId){
 
     return fract(magic.z * fract(dot(uv, magic.xy)));
 }
-
-float get_velocity_convergence(vec2 uv, vec2 step_size)
-{
-	vec2 base = textureLod(vector_sampler, uv, 0.0).xy;
-	vec2 x = textureLod(vector_sampler, uv + vec2(0, step_size.x), 0.0).xy;
-	vec2 y = textureLod(vector_sampler, uv + vec2(step_size.y, 0), 0.0).xy;
-
-	return (dot(vec2(0, 1), vec2(x - base)) + dot(vec2(1, 0), vec2(y - base)));
-}
-
-vec3 get_ndc_velocity(vec2 uv, vec2 render_size, float depth)
-{
-	float ndc_velocity_z = get_velocity_convergence(uv, vec2(1) / render_size) / depth;
-
-	vec2 ndc_velocity_xy = textureLod(vector_sampler, uv, 0.0).xy;
-	
-	return vec3(ndc_velocity_xy, ndc_velocity_z);
-}
-
-vec3 get_world_velocity(vec2 uv, vec2 render_size, float depth)
-{
-	return get_ndc_velocity(uv, render_size, depth) / depth;
-}
-	
-
-vec3 get_velocity_curl_vector(vec2 uv, vec2 render_size)
-{
-	float depth = textureLod(depth_sampler, uv, 0.0).x;
-
-	vec2 step_size = vec2(1) / render_size;
-	vec3 base = get_world_velocity(uv, render_size, depth);
-	vec3 x = get_world_velocity(uv + vec2(step_size.x, 0), render_size, depth);
-	vec3 y = get_world_velocity(uv + vec2(0, step_size.y), render_size, depth);
-
-	vec2 depth_derivative = get_depth_difference_at_derivative(uv, step_size) / depth;
-
-	vec3 x_vector = normalize(vec3(step_size.x, 0, 0));
-	vec3 y_vector = normalize(vec3(0, step_size.y,  0));
-
-	vec3 cross_x = cross((x - base) / vec3(step_size, 0), x_vector);
-	vec3 cross_y = cross((y - base) / vec3(step_size, 0), y_vector);
-
-	return cross_x + cross_y;
-}
-
-float get_velocity_curl(vec2 uv, vec2 render_size)
-{
-	vec2 step_size = vec2(1) / render_size;
-	vec2 base = textureLod(vector_sampler, uv, 0.0).xy;
-	vec2 x = textureLod(vector_sampler, uv + vec2(0, step_size.x), 0.0).xy;
-	vec2 y = textureLod(vector_sampler, uv + vec2(step_size.y, 0), 0.0).xy;
-
-	return (cross(vec3(0, 1, 0), vec3(x - base, 0) / vec3(step_size, 0)) + cross(vec3(1, 0, 0), vec3(y - base, 0) / vec3(step_size, 0))).z;
-}
-// -------------------------------------------------------
-
-// McGuire's functions https://docs.google.com/document/d/1IIlAKTj-O01hcXEdGxTErQbCHO9iBmRx6oFUy_Jm0fI/edit
-// ----------------------------------------------------------
-// This function would return 1 if depth_x is bigger than depth_y by sze amount. meaning, it would return 1 if x is closer to camera
-float soft_depth_compare(float depth_X, float depth_Y)
-{
-	return clamp(1 - (depth_X - depth_Y) / sze, 0, 1);
-}
-float soft_depth_compare_custom(float depth_X, float depth_Y, float csze)
-{
-	return clamp(1 - (depth_X - depth_Y) / csze, 0, 1);
-}
-
-float cone(vec2 X, vec2 Y, vec2 v)
-{
-	return clamp(1 - length(X - Y) / length(v), 0, 1);
-}
-
-float cylinder(vec2 X, vec2 Y, vec2 v)
-{
-	return 1.0 + smoothstep(0.95 * length(v), 1.05 * length(v), length(X - Y));
-}
-// ----------------------------------------------------------
-
-// Motion similarity 
-// ----------------------------------------------------------
 float get_motion_difference(vec2 V, vec2 V2, float power)
 {
 	vec2 VO = V - V2;
 	float difference = dot(VO, V) / max(FLT_MIN, dot(V, V));
 	return pow(clamp(difference, 0, 1), power);
 }
-// ----------------------------------------------------------
+// McGuire's function https://docs.google.com/document/d/1IIlAKTj-O01hcXEdGxTErQbCHO9iBmRx6oFUy_Jm0fI/edit
+float soft_depth_compare(float depth_X, float depth_Y)
+{
+	return clamp(1 - (depth_X - depth_Y) / sze, 0, 1);
+}
+// -------------------------------------------------------
+
+vec2 round_uv(vec2 uv, vec2 render_size)
+{
+	return (round((uv * render_size) - vec2(0.5)) + vec2(0.5)) / render_size;
+}
 
 void main() 
 {
@@ -157,91 +77,95 @@ void main()
 	{
 		return;
 	}
-	
+	// show past image for freeze frame
 	if(params.freeze > 0)
 	{
 		imageStore(output_image, uvi, imageLoad(past_color_image, uvi));
 		return;
 	}
-
+	// must be on pixel center for whole values (tested)
 	vec2 uvn = vec2(uvi + vec2(0.5)) / render_size;
 
-	int iteration_count = int(params.motion_blur_samples);
+	vec4 base_color = textureLod(color_sampler, uvn, 0.0);
+	// get dominant velocity data
+	vec4 velocity_map_sample = textureLod(velocity_map, uvn, 0.0);
 
-	vec4 base = textureLod(color_sampler, uvn, 0.0);
-
-	vec4 result_constructed_color = vec4(0);
-
-	vec4 velocity_map_sample = imageLoad(velocity_map, uvi);
-	
-	vec3 velocity = -textureLod(vector_sampler, velocity_map_sample.xy, 0.0).xyz;
+	vec3 dominant_velocity = -textureLod(vector_sampler, velocity_map_sample.xy, 0.0).xyz;
 
 	vec3 naive_velocity = -textureLod(vector_sampler, uvn, 0.0).xyz;
-
-	float max_dialtion_radius = pow(2, params.last_iteration_index) * params.sample_step_multiplier * 2 / max(render_size.x, render_size.y);
-
-	if ((dot(velocity, velocity) == 0 || params.motion_blur_intensity == 0) && params.debug == 0)
+	// if velocity is 0 and we dont show debug, return right away.
+	if ((dot(dominant_velocity, dominant_velocity) == 0 || params.motion_blur_intensity == 0) && params.debug == 0)
 	{
-		imageStore(output_image, uvi, base);
-		imageStore(past_color_image, uvi, base);
+		imageStore(output_image, uvi, base_color);
+		imageStore(past_color_image, uvi, base_color);
 		return;
 	}
-	
-	float noise_offset = (interleaved_gradient_noise(uvi, int(params.frame)) - 1);
+	// offset along velocity to blend between sample steps
+	float noise_offset = interleaved_gradient_noise(uvi, int(params.frame)) - 1;
+	// scale of step
+	float velocity_step_coef = min(params.motion_blur_intensity, params.max_dilation_radius / max(render_size.x, render_size.y) / (length(dominant_velocity) * params.motion_blur_intensity)) / max(1.0, params.motion_blur_samples - 1.0);
 
-	float velocity_step_coef = min(params.motion_blur_intensity, max_dialtion_radius / (length(velocity) * params.motion_blur_intensity)) / max(1.0, params.motion_blur_samples - 1.0);
+	vec3 step_sample = dominant_velocity * velocity_step_coef;
 
-	vec3 sample_step = velocity * velocity_step_coef;
+	vec3 naive_step_sample = naive_velocity * velocity_step_coef;
 
-	vec4 velocity_map_sample_step = vec4(0);
+	vec4 velocity_map_step_sample = vec4(0);
 
 	//float d = 1.0 - min(1.0, 2.0 * distance(uvn, vec2(0.5)));
 	//sample_step *= 1.0 - d * params.fade_padding.x;
 
 	float total_weight = 1;
 	
-	vec2 offset = vec2(sample_step * noise_offset);//vec2(0);//
+	vec3 dominant_offset = step_sample * noise_offset;
 	
-	vec4 col = base * total_weight;
+	vec3 naive_offset = naive_step_sample * noise_offset;
 
-	float depth = max(FLT_MIN, textureLod(depth_sampler, velocity_map_sample.xy, 0.0).x);
+	vec4 col = base_color * total_weight;
 
-	float naive_depth = max(FLT_MIN, textureLod(depth_sampler, uvn, 0.0).x);
-	
-	float naive_background = soft_depth_compare_custom(depth, naive_depth, 0.0001);
-	
-	for (int i = 1; i < iteration_count; i++) 
+	float dominant_depth = textureLod(depth_sampler, velocity_map_sample.xy, 0.0).x;
+
+	float naive_depth = textureLod(depth_sampler, uvn, 0.0).x;
+	// is dilation in front of ground truth (have we started sampling inside a dilation)
+	float dilation_foreground = step(naive_depth, dominant_depth - 0.000001);
+
+	for (int i = 1; i < params.motion_blur_samples; i++) 
 	{
-		offset += sample_step.xy;
+		dominant_offset += step_sample;
 
-		vec2 uvo = uvn + offset;
+		naive_offset += naive_step_sample;
 
-		if (any(notEqual(uvo, clamp(uvo, vec2(0.0), vec2(1.0))))) 
+		vec2 dominant_uvo = round_uv(uvn + dominant_offset.xy, render_size);
+
+		vec2 naive_uvo = round_uv(uvn + naive_offset.xy, render_size);
+
+		if (any(notEqual(dominant_uvo, clamp(dominant_uvo, vec2(0.0), vec2(1.0))))) 
 		{
 			break;
 		}
 		
-		velocity_map_sample_step = imageLoad(velocity_map, ivec2(uvo * render_size));
+		velocity_map_step_sample = textureLod(velocity_map, dominant_uvo, 0.0);
 
-		vec3 current_velocity = -textureLod(vector_sampler, velocity_map_sample_step.xy, 0.0).xyz;
+		vec3 current_velocity = -textureLod(vector_sampler, velocity_map_step_sample.xy, 0.0).xyz;
 
-		float current_depth = max(FLT_MIN, textureLod(depth_sampler, velocity_map_sample_step.xy, 0.0).x);
+		float current_dominant_depth = textureLod(depth_sampler, velocity_map_step_sample.xy, 0.0).x;
 
-		float current_naive_depth = max(FLT_MIN, textureLod(depth_sampler, uvo, 0.0).x);
+		float current_naive_depth = textureLod(depth_sampler, dominant_uvo, 0.0).x;
+		// is current velocity different than dilated velocity
+		float motion_difference = get_motion_difference(dominant_velocity.xy, current_velocity.xy, 0.1);
+		// is current depth closer than origin of dilation (object in the foreground)
+		float foreground = step(naive_depth + dominant_offset.z, current_naive_depth - 0.0001);
+		// is dilation in front of current ground truth (are we within a dilation still)
+		float naive_foreground = step(0.05 / dominant_depth + 0.1, 0.05 / current_naive_depth);
+		// if we are sampling a foreground object and its velocity is different, discard this sample (prevent ghosting)
+		float sample_weight = 1 - (foreground * motion_difference);
 
-		float motion_difference = get_motion_difference(velocity.xy, current_velocity.xy, 0.1);
+		float naive_sample_weight = 1 - (foreground * motion_difference);
+		// if we started from and are still inside a dilation, choose the naive values for blurring
+		float dominant_naive_mix = dilation_foreground * naive_foreground;
 
-		float foreground = soft_depth_compare(npd / current_depth, npd / depth);
+		vec2 sample_uv = mix(dominant_uvo, naive_uvo, dominant_naive_mix);
 
-		float naive_foreground = soft_depth_compare(npd / current_naive_depth - sze, npd / depth);//soft_depth_compare_custom(depth, current_naive_depth, 0.0001);//
-
-		float sample_weight = 1;
-
-		sample_weight *= 1 - (foreground * motion_difference);
-
-		total_weight += sample_weight;
-
-		vec2 sample_uv = mix(uvo, uvn, 1 - max(naive_background, naive_foreground));//uvo;//
+		total_weight += mix(sample_weight, naive_sample_weight, dominant_naive_mix);
 
 		col += textureLod(color_sampler, sample_uv, 0.0) * sample_weight;
 	}
@@ -255,15 +179,28 @@ void main()
 		return;
 	}
 
-	vec4 tl_col = vec4(abs(textureLod(vector_sampler, uvn, 0.0).xy) * 10, 0, 1);
+	vec4 tl_col;
 
-	vec4 tr_col = vec4(abs(velocity.xy) * 10, 0, 1);//vec4(naive_background);//
+	vec4 tr_col;
 
-	vec4 bl_col = vec4(abs(velocity_map_sample.xyw - vec3(uvn, 0)) * vec3(10, 10, 1), 1);
+	vec4 bl_col;
 
-	vec4 br_col = col;
+	vec4 br_col;
 	
-	//imageStore(past_color_image, uvi, imageLoad(output_image, uvi));
+	if(params.debug_page == 0)
+	{
+		tl_col = vec4((textureLod(vector_sampler, uvn, 0.0).xyz) * vec3(10, 10, 10000), 1);
+		tr_col = vec4(abs(dominant_velocity.xy) * 10, 0, 1);
+		bl_col = vec4(abs(velocity_map_sample.xyw - vec3(uvn, 0)) * vec3(10, 10, 1), 1);
+		br_col = col;
+	}
+	if(params.debug_page == 1)
+	{
+		tl_col = vec4(naive_depth * 10);
+		tr_col = vec4(dilation_foreground);
+		bl_col = vec4(dominant_depth * 10);
+		br_col = col;
+	}
 	
 	imageStore(output_image, uvi / 2, tl_col);
 	imageStore(output_image, uvi / 2 + ivec2(vec2(0.5, 0.5) * render_size), br_col);
