@@ -1,6 +1,7 @@
 # Instructions
 1. take the contenst of the "addons" folder and move them to an addons folder in your project. 
-2. add an environment node, add a compositor effect to it, and to it, add a new MotionBlurSphynxJumpFlood
+2. add an environment node, add a compositor effect to it
+3. to that, add a new pre-blur-processor effect, and after it add a new MotionBlurSphynxJumpFlood
 
 # Demo Repo
 you can find a working demo repository here:
