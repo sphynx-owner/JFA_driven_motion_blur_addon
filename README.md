@@ -3,6 +3,9 @@
 2. add an environment node, add a compositor effect to it
 3. to that, add a new PreBlurProcessor effect, which is now required, and after it add a new MotionBlurSphynxJumpFlood
 
+WARNING:
+if you want transparent objects to render on top of the blur and keep the background blurred, you can move the pre-blur-processing and blur post process effects both to callback type of pre-transparent, At which point it would not work if you have MSAA enabled, so make sure to also turn that off.
+
 # Demo Repo
 you can find a working demo repository here:
 https://github.com/sphynx-owner/JFA_driven_motion_blur_demo
