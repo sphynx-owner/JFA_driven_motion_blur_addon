@@ -4,7 +4,7 @@
 3. to that, add a new PreBlurProcessor effect, which is now required, and after it add a new MotionBlurSphynxJumpFlood
 
 WARNING:
-if you want transparent objects to render on top of the blur and keep the background blurred, you can move the pre-blur-processing and blur post process effects both to callback type of pre-transparent, At which point it would not work if you have MSAA enabled, so make sure to also turn that off.
+if you want transparent objects to render on top of the blurred background, you can move the pre-blur-processing and blur post process effects both to callback type of pre-transparent, At which point it would not work if you have MSAA enabled, so make sure to also turn that off.
 
 # Demo Repo
 you can find a working demo repository here:
