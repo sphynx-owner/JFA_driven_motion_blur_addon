@@ -3,6 +3,9 @@
 2. add an environment node, add a compositor effect to it
 3. to that, add a new PreBlurProcessor effect, which is now required, and after it add a new MotionBlurSphynxJumpFlood
 
+instructions for radial blur meshes can be seen here:
+https://youtu.be/eslsw9do4Kc
+
 WARNING:
 if you want transparent objects to render on top of the blurred background, you can move the pre-blur-processing and blur post process effects both to callback type of pre-transparent, At which point it would not work if you have MSAA enabled, so make sure to also turn that off.
 
