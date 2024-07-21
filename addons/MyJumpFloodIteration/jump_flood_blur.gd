@@ -96,6 +96,8 @@ var rd: RenderingDevice
 
 var linear_sampler: RID
 
+var nearest_sampler : RID
+
 var construct_shader : RID
 var construct_pipeline : RID
 
@@ -142,7 +144,14 @@ func _initialize_compute():
 	sampler_state.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	sampler_state.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	linear_sampler = rd.sampler_create(sampler_state)
-
+	
+	sampler_state.min_filter = RenderingDevice.SAMPLER_FILTER_NEAREST
+	sampler_state.mag_filter = RenderingDevice.SAMPLER_FILTER_NEAREST
+	sampler_state.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	sampler_state.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	
+	nearest_sampler = rd.sampler_create(sampler_state)
+	
 	var construct_shader_spirv : RDShaderSPIRV = construction_pass.get_spirv()
 	construct_shader = rd.shader_create_from_spirv(construct_shader_spirv)
 	construct_pipeline = rd.compute_pipeline_create(construct_shader)
@@ -162,11 +171,11 @@ func get_image_uniform(image: RID, binding: int) -> RDUniform:
 	uniform.add_id(image)
 	return uniform
 
-func get_sampler_uniform(image: RID, binding: int) -> RDUniform:
+func get_sampler_uniform(image: RID, binding: int, linear : bool = true) -> RDUniform:
 	var uniform: RDUniform = RDUniform.new()
 	uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
 	uniform.binding = binding
-	uniform.add_id(linear_sampler)
+	uniform.add_id(linear_sampler if linear else nearest_sampler)
 	uniform.add_id(image)
 	return uniform
 
@@ -200,8 +209,8 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				return
 			
 			ensure_texture(texture, render_scene_buffers)
-			ensure_texture(buffer_a, render_scene_buffers)
-			ensure_texture(buffer_b, render_scene_buffers)
+			ensure_texture(buffer_a, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16_SFLOAT)
+			ensure_texture(buffer_b, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16_SFLOAT)
 			ensure_texture(past_color, render_scene_buffers)
 			ensure_texture(custom_velocity, render_scene_buffers)
 
@@ -250,12 +259,12 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				var y_groups := floori((render_size.y - 1) / 16 + 1)
 				
 				tex_uniform_set = UniformSetCacheRD.get_cache(construct_shader, 0, [
-					get_sampler_uniform(depth_image, 0),
-					get_sampler_uniform(custom_velocity_image, 1),
+					get_sampler_uniform(depth_image, 0, false),
+					get_sampler_uniform(custom_velocity_image, 1, false),
 					get_image_uniform(buffer_a_image, 2),
 					get_image_uniform(buffer_b_image, 3),
-					get_sampler_uniform(buffer_a_image, 4),
-					get_sampler_uniform(buffer_b_image, 5)
+					get_sampler_uniform(buffer_a_image, 4, false),
+					get_sampler_uniform(buffer_b_image, 5, false)
 				])
 				
 				compute_list = rd.compute_list_begin()
@@ -300,10 +309,10 @@ func _render_callback(p_effect_callback_type, p_render_data):
 				rd.draw_command_begin_label("Compute blur " + str(view), Color(1.0, 1.0, 1.0, 1.0))
 
 				tex_uniform_set = UniformSetCacheRD.get_cache(motion_blur_shader, 0, [
-					get_sampler_uniform(color_image, 0),
-					get_sampler_uniform(depth_image, 1),
-					get_sampler_uniform(custom_velocity_image, 2),
-					get_sampler_uniform(buffer_b_image if last_iteration_index % 2 else buffer_a_image, 3),
+					get_sampler_uniform(color_image, 0, false),
+					get_sampler_uniform(depth_image, 1, false),
+					get_sampler_uniform(custom_velocity_image, 2, false),
+					get_sampler_uniform(buffer_b_image if last_iteration_index % 2 else buffer_a_image, 3, false),
 					get_image_uniform(texture_image, 4),
 					get_image_uniform(past_color_image, 5),
 				])

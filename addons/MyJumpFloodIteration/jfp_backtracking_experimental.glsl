@@ -6,8 +6,8 @@
 
 layout(set = 0, binding = 0) uniform sampler2D depth_sampler;
 layout(set = 0, binding = 1) uniform sampler2D velocity_sampler;
-layout(rgba16f, set = 0, binding = 2) uniform writeonly image2D buffer_a;
-layout(rgba16f, set = 0, binding = 3) uniform writeonly image2D buffer_b;
+layout(rg16f, set = 0, binding = 2) uniform writeonly image2D buffer_a;
+layout(rg16f, set = 0, binding = 3) uniform writeonly image2D buffer_b;
 layout(set = 0, binding = 4) uniform sampler2D buffer_a_sampler;
 layout(set = 0, binding = 5) uniform sampler2D buffer_b_sampler;
 
@@ -36,14 +36,14 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 const int kernel_size = 8;
 
 const vec2 check_step_kernel[kernel_size] = {
-	vec2(1, 1),
+	vec2(-1, 0),
+	vec2(1, 0),
+	vec2(0, -1),
 	vec2(0, 1),
 	vec2(-1, 1),
-	vec2(1, 0),
 	vec2(1, -1),
-	vec2(-1, 0),
+	vec2(1, 1),
 	vec2(-1, -1),
-	vec2(0, -1),
 };
 
 vec4 get_value(bool a, vec2 uv, ivec2 render_size)
@@ -91,14 +91,16 @@ float get_motion_difference(vec2 V, vec2 V2, float parallel_sensitivity, float p
 }
 // ----------------------------------------------------------
 
-vec4 sample_fitness(vec2 uv_offset, vec4 uv_sample)
+vec4 sample_fitness(vec2 uv_offset, vec4 uv_sample, vec2 render_size)
 {
 	vec2 sample_velocity = -uv_sample.xy;
+
 	// if velocity is 0, we never reach it (steps never smaller than 1)
 	if (dot(sample_velocity, sample_velocity) <= FLT_MIN || uv_sample.w == 0)
 	{
 		return vec4(FLT_MAX, FLT_MAX, FLT_MAX, 0);
 	}
+
 	// velocity space distance (projected pixel offset onto velocity vector)
 	float velocity_space_distance = dot(sample_velocity, uv_offset) / dot(sample_velocity, sample_velocity);
 	// the velcity space distance to gravitate the JFA to (found more relieable than doing a 0 - 1 range)
@@ -118,18 +120,13 @@ vec4 sample_fitness(vec2 uv_offset, vec4 uv_sample)
 float is_sample_better(vec4 a, vec4 b)
 {
 	// see explanation at end of code
-	return mix(1. - step(b.x * a.w, a.x * b.w * (1. - step(b.z, a.z))), (1. - step(a.z, b.z)), step(abs(a.w - b.w), 0.5) * step(0.5, a.w));
-}
-
-vec2 round_uv(vec2 uv, vec2 render_size)
-{
-	return (round((uv * render_size) - vec2(0.5)) + vec2(0.5)) / render_size;
+	return mix(1. - step(b.x * a.w, a.x * b.w), step(b.z, a.z), step(0.5, b.w) * step(0.5, a.w));
 }
 
 // dilation validation and better sample selection
 vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec3 chosen_velocity, vec4 best_sample_fitness, vec2 render_size)
 {
-	//return vec4(chosen_uv, best_sample_fitness.z, 0);// comment this to enable backtracking
+	//return vec4(chosen_uv, best_sample_fitness.z, best_sample_fitness.w);// comment this to enable backtracking
 
 	float smallest_step = 1 / max(render_size.x, render_size.y);
 	// choose maximum range to check along (matches with implementation in blur stage)
@@ -137,7 +134,7 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec3 chosen_velocity, vec4
 
 	vec2 best_uv = chosen_uv;
 
-	//float best_multiplier = best_sample_fitness.y;
+	float best_multiplier = best_sample_fitness.y;
 
 	float best_depth = best_sample_fitness.z;
 
@@ -157,7 +154,7 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec3 chosen_velocity, vec4
 			continue;
 		}
 
-		vec2 check_uv = round_uv(uvn - chosen_velocity.xy * velocity_multiplier, render_size);
+		vec2 check_uv = uvn - chosen_velocity.xy * velocity_multiplier;
 
 		if(any(notEqual(check_uv, clamp(check_uv, vec2(0.0), vec2(1.0)))))
 		{
@@ -176,18 +173,18 @@ vec4 get_backtracked_sample(vec2 uvn, vec2 chosen_uv, vec3 chosen_velocity, vec4
 		if((abs(current_depth - best_sample_fitness.z) < params.depth_match_threshold) && (velocity_difference <= smallest_velocity_difference))
 		{
 			best_uv = check_uv;
-			//best_multiplier = velocity_multiplier;
+			best_multiplier = velocity_multiplier;
 			best_depth = current_depth;
 			if(steps_to_compare == 0)
 			{
-				return vec4(best_uv, best_depth, 0);
+				return vec4(best_uv, best_depth, best_multiplier);
 			}
 			steps_to_compare--;
 		}
 		// if a sample was found and we lost footing after, go with that found sample right away
 		else if(initial_steps_to_compare > steps_to_compare)
 		{
-			return vec4(best_uv, best_depth, 0);
+			return vec4(best_uv, best_depth, best_multiplier);
 		}
 	}
 
@@ -202,10 +199,11 @@ void main()
 	{
 		return;
 	}
-	// must be on pixel center for whole values (tested)
+
+	// must be on pixel center for whole values
 	vec2 uvn = (vec2(uvi) + vec2(0.5)) / render_size;
 
-	vec2 uv_step = vec2(params.step_size) / render_size;
+	vec2 uv_step = vec2(round(params.step_size)) / render_size;
 
 	vec4 best_sample_fitness = vec4(FLT_MAX, FLT_MAX, FLT_MAX, 0);
 	
@@ -236,7 +234,7 @@ void main()
 
 		vec4 uv_sample = vec4(textureLod(velocity_sampler, check_uv, 0.0).xyz, textureLod(depth_sampler, check_uv, 0.0).x);
 		
-		vec4 current_sample_fitness = sample_fitness(step_offset, uv_sample);
+		vec4 current_sample_fitness = sample_fitness(step_offset, uv_sample, render_size);
 
 		if (is_sample_better(current_sample_fitness, best_sample_fitness) > 0.5)
 		{
@@ -253,8 +251,8 @@ void main()
 	}
 
 	float depth = textureLod(depth_sampler, uvn, 0.0).x;
-	// best_sample_fitness.z contains the depth of the texture + offset of velocity z
 
+	// best_sample_fitness.z contains the depth of the texture + offset of velocity z
 	vec4 backtracked_sample = get_backtracked_sample(uvn, chosen_uv, chosen_velocity, best_sample_fitness, render_size);
 	
 	if(best_sample_fitness.w == 0 || depth > backtracked_sample.z)
@@ -263,17 +261,14 @@ void main()
 		return;
 	}
 	
-	set_value(set_a, uvi, vec4(backtracked_sample.xy, 0, backtracked_sample.w), render_size);
+	set_value(set_a, uvi, backtracked_sample, render_size);
 	
 	return;
 }	
-
-// ------ sample fitness conditions -------
+//
 //	if((a.w == b.w) && (a.w == 1))
 //	{
-//		return a.z < b.z ? 1. : 0.;
+//		return a.z < b.z ? 0. : 1.;
 //	}
 //
-//	float nearer = a.z > b.z ? 1 : 0;
-//
-//	return a.x * b.w * nearer < b.x * a.w ? 1. : 0.;
+//	return a.x * b.w < b.x * a.w ? 1. : 0.;

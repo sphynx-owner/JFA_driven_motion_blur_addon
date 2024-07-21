@@ -6,15 +6,17 @@ class_name PreBlurProcessor
 		pre_blur_processor_shader_file = value
 		_init()
 
-@export var camera_rotation_component : BlurVelocityComponentResource = BlurVelocityComponentResource.new()
-@export var camera_movement_component : BlurVelocityComponentResource = BlurVelocityComponentResource.new()
-@export var object_movement_component : BlurVelocityComponentResource = BlurVelocityComponentResource.new()
+@export var camera_rotation_component : BlurVelocityComponentResource = preload("res://addons/PreBlurProcessing/default_component.tres")
+@export var camera_movement_component : BlurVelocityComponentResource = preload("res://addons/PreBlurProcessing/default_component.tres")
+@export var object_movement_component : BlurVelocityComponentResource = preload("res://addons/PreBlurProcessing/default_component.tres")
 
 var context: StringName = "MotionBlur"
 
 var rd: RenderingDevice
 
 var linear_sampler: RID
+
+var nearest_sampler : RID
 
 var construct_shader : RID
 var construct_pipeline : RID
@@ -47,6 +49,12 @@ func _initialize_compute():
 	sampler_state.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	linear_sampler = rd.sampler_create(sampler_state)
 
+	sampler_state.min_filter = RenderingDevice.SAMPLER_FILTER_NEAREST
+	sampler_state.mag_filter = RenderingDevice.SAMPLER_FILTER_NEAREST
+	sampler_state.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	sampler_state.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
+	nearest_sampler = rd.sampler_create(sampler_state)
+
 	var shader_spirv: RDShaderSPIRV = pre_blur_processor_shader_file.get_spirv()
 	pre_blur_processor_shader = rd.shader_create_from_spirv(shader_spirv)
 	pre_blur_processor_pipeline = rd.compute_pipeline_create(pre_blur_processor_shader)
@@ -58,11 +66,11 @@ func get_image_uniform(image: RID, binding: int) -> RDUniform:
 	uniform.add_id(image)
 	return uniform
 
-func get_sampler_uniform(image: RID, binding: int) -> RDUniform:
+func get_sampler_uniform(image: RID, binding: int, linear : bool = true) -> RDUniform:
 	var uniform: RDUniform = RDUniform.new()
 	uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
 	uniform.binding = binding
-	uniform.add_id(linear_sampler)
+	uniform.add_id(linear_sampler if linear else nearest_sampler)
 	uniform.add_id(image)
 	return uniform
 
@@ -102,7 +110,6 @@ func _render_callback(p_effect_callback_type, p_render_data : RenderData):
 			
 			var view_count = render_scene_buffers.get_view_count()
 			for view in range(view_count):
-				var color_image := render_scene_buffers.get_color_layer(view)
 				var depth_image := render_scene_buffers.get_depth_layer(view)
 				var velocity_image := render_scene_buffers.get_velocity_layer(view)
 				var custom_velocity_image := render_scene_buffers.get_texture_slice(context, custom_velocity, view, 0, 1, 1)
@@ -121,11 +128,9 @@ func _render_callback(p_effect_callback_type, p_render_data : RenderData):
 				rd.draw_command_begin_label("Process Velocity Buffer " + str(view), Color(1.0, 1.0, 1.0, 1.0))
 
 				tex_uniform_set = UniformSetCacheRD.get_cache(pre_blur_processor_shader, 0, [
-					get_sampler_uniform(color_image, 0),
-					get_sampler_uniform(depth_image, 1),
-					get_sampler_uniform(velocity_image, 2),
-					get_image_uniform(custom_velocity_image, 3),
-					get_image_uniform(color_image, 4),
+					get_sampler_uniform(depth_image, 0, false),
+					get_sampler_uniform(velocity_image, 1, false),
+					get_image_uniform(custom_velocity_image, 2),
 					scene_data_buffer_uniform,
 				])
 

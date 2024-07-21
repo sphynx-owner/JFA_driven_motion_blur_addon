@@ -64,11 +64,6 @@ float soft_depth_compare(float depth_X, float depth_Y)
 }
 // -------------------------------------------------------
 
-vec2 round_uv(vec2 uv, vec2 render_size)
-{
-	return (round((uv * render_size) - vec2(0.5)) + vec2(0.5)) / render_size;
-}
-
 void main() 
 {
 	ivec2 render_size = ivec2(textureSize(color_sampler, 0));
@@ -122,11 +117,7 @@ void main()
 
 	vec4 col = base_color * total_weight;
 
-	float dominant_depth = textureLod(depth_sampler, velocity_map_sample.xy, 0.0).x;
-
 	float naive_depth = textureLod(depth_sampler, uvn, 0.0).x;
-	// is dilation in front of ground truth (have we started sampling inside a dilation)
-	float dilation_foreground = step(naive_depth, dominant_depth - 0.000001);
 
 	for (int i = 1; i < params.motion_blur_samples; i++) 
 	{
@@ -134,9 +125,9 @@ void main()
 
 		naive_offset += naive_step_sample;
 
-		vec2 dominant_uvo = round_uv(uvn + dominant_offset.xy, render_size);
+		vec2 dominant_uvo = uvn + dominant_offset.xy;
 
-		vec2 naive_uvo = round_uv(uvn + naive_offset.xy, render_size);
+		vec2 naive_uvo = uvn + naive_offset.xy;
 
 		if (any(notEqual(dominant_uvo, clamp(dominant_uvo, vec2(0.0), vec2(1.0))))) 
 		{
@@ -145,27 +136,21 @@ void main()
 		
 		velocity_map_step_sample = textureLod(velocity_map, dominant_uvo, 0.0);
 
-		vec3 current_velocity = -textureLod(vector_sampler, velocity_map_step_sample.xy, 0.0).xyz;
-
-		float current_dominant_depth = textureLod(depth_sampler, velocity_map_step_sample.xy, 0.0).x;
+		vec3 current_dominant_velocity = -textureLod(vector_sampler, velocity_map_step_sample.xy, 0.0).xyz;
 
 		float current_naive_depth = textureLod(depth_sampler, dominant_uvo, 0.0).x;
 		// is current velocity different than dilated velocity
-		float motion_difference = get_motion_difference(dominant_velocity.xy, current_velocity.xy, 0.1);
+		float motion_difference = get_motion_difference(dominant_velocity.xy, current_dominant_velocity.xy, 0.1);
 		// is current depth closer than origin of dilation (object in the foreground)
 		float foreground = step(naive_depth + dominant_offset.z, current_naive_depth - 0.0001);
-		// is dilation in front of current ground truth (are we within a dilation still)
-		float naive_foreground = step(0.05 / dominant_depth + 0.1, 0.05 / current_naive_depth);
 		// if we are sampling a foreground object and its velocity is different, discard this sample (prevent ghosting)
 		float sample_weight = 1 - (foreground * motion_difference);
 
-		float naive_sample_weight = 1 - (foreground * motion_difference);
-		// if we started from and are still inside a dilation, choose the naive values for blurring
-		float dominant_naive_mix = dilation_foreground * naive_foreground;
+		float dominant_naive_mix = 1. - step(0.9, motion_difference);
 
-		vec2 sample_uv = mix(dominant_uvo, naive_uvo, dominant_naive_mix);
+		vec2 sample_uv = mix(naive_uvo, dominant_uvo, dominant_naive_mix);
 
-		total_weight += mix(sample_weight, naive_sample_weight, dominant_naive_mix);
+		total_weight += sample_weight;
 
 		col += textureLod(color_sampler, sample_uv, 0.0) * sample_weight;
 	}
@@ -197,8 +182,8 @@ void main()
 	if(params.debug_page == 1)
 	{
 		tl_col = vec4(naive_depth * 10);
-		tr_col = vec4(dilation_foreground);
-		bl_col = vec4(dominant_depth * 10);
+		tr_col = textureLod(color_sampler, velocity_map_sample.xy, 0.0);//
+		//bl_col = vec4(dominant_depth * 10);
 		br_col = col;
 	}
 	

@@ -4,11 +4,9 @@
 #define FLT_MAX 3.402823466e+38
 #define FLT_MIN 1.175494351e-38
 
-layout(set = 0, binding = 0) uniform sampler2D color_sampler;
-layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
-layout(set = 0, binding = 2) uniform sampler2D vector_sampler;
-layout(rgba32f, set = 0, binding = 3) uniform writeonly image2D vector_output;
-layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D color_output;
+layout(set = 0, binding = 0) uniform sampler2D depth_sampler;
+layout(set = 0, binding = 1) uniform sampler2D vector_sampler;
+layout(rgba32f, set = 0, binding = 2) uniform writeonly image2D vector_output;
 
 struct SceneData {
 	highp mat4 projection_matrix;
@@ -119,7 +117,7 @@ float get_view_depth(float depth)
 
 void main() 
 {
-	ivec2 render_size = ivec2(textureSize(color_sampler, 0));
+	ivec2 render_size = ivec2(textureSize(vector_sampler, 0));
 	ivec2 uvi = ivec2(gl_GlobalInvocationID.xy);
 	if ((uvi.x >= render_size.x) || (uvi.y >= render_size.y)) 
 	{
