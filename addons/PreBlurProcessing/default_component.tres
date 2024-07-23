@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="BlurVelocityComponentResource" load_steps=2 format=3 uid="uid://rp3mpjmisoyh"]
 
-[ext_resource type="Script" path="res://PreBlurProcessing/blur_velocity_component_resource.gd" id="1_ijikr"]
+[ext_resource type="Script" path="res://addons/PreBlurProcessing/blur_velocity_component_resource.gd" id="1_ijikr"]
 
 [resource]
 script = ExtResource("1_ijikr")
