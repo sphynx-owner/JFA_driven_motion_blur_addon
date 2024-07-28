@@ -164,7 +164,7 @@ void main()
 	// fill in gaps in base velocity (skybox, z velocity)
 	vec3 base_velocity = vec3(textureLod(vector_sampler, uvn, 0.0).xy + mix(vec2(0), camera_uv_change.xy, step(depth, 0.)), camera_uv_change.z);
 	// fsr just makes it so values are larger than 1, I assume its the only case when it happens
-	if(params.is_fsr2 > 0.5 && dot(base_velocity, base_velocity) >= 1)
+	if(params.is_fsr2 > 0.5 && dot(base_velocity.xy, base_velocity.xy) >= 1)
 	{
 		base_velocity = camera_uv_change;
 	}
