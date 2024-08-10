@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bp5jl5351ph2d"
+path="res://.godot/imported/mcguire_tile_max_x.glsl-9c459b3d537ec225893d39ee91be1c1e.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/McGuire/ShaderFiles/mcguire_tile_max_x.glsl"
+dest_files=["res://.godot/imported/mcguire_tile_max_x.glsl-9c459b3d537ec225893d39ee91be1c1e.res"]
+
+[params]
+

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://c4dywnp7k8rph"
+path="res://.godot/imported/jfp_simple.glsl-96987ba8c42947c7e648d28f42a73f7a.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/JumpFlood/ShaderFiles/jfp_simple.glsl"
+dest_files=["res://.godot/imported/jfp_simple.glsl-96987ba8c42947c7e648d28f42a73f7a.res"]
+
+[params]
+

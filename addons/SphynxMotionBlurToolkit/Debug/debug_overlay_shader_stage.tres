@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://o2bivm33b0v4"]
+
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_rqnmr"]
+[ext_resource type="RDShaderFile" uid="uid://dyxn6g5gvoge7" path="res://addons/SphynxMotionBlurToolkit/Debug/ShaderFiles/debug_overlay.glsl" id="2_qgd1y"]
+
+[resource]
+script = ExtResource("1_rqnmr")
+shader_file = ExtResource("2_qgd1y")

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://byfogr1qtbafi"
+path="res://.godot/imported/mcguire_neighbor_max.glsl-aa40cc8d534a08ad7aaf84bf0615cc3a.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/McGuire/ShaderFiles/mcguire_neighbor_max.glsl"
+dest_files=["res://.godot/imported/mcguire_neighbor_max.glsl-aa40cc8d534a08ad7aaf84bf0615cc3a.res"]
+
+[params]
+

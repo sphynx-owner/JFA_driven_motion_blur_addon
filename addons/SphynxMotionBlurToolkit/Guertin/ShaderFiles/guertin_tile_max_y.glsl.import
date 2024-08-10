@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://ceetvitdbio4l"
+path="res://.godot/imported/guertin_tile_max_y.glsl-60f045725ff6917c4bd911cf3710a444.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/Guertin/ShaderFiles/guertin_tile_max_y.glsl"
+dest_files=["res://.godot/imported/guertin_tile_max_y.glsl-60f045725ff6917c4bd911cf3710a444.res"]
+
+[params]
+

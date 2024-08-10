@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://bidsfymvdyhek"]
+
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_2uett"]
+[ext_resource type="RDShaderFile" uid="uid://i6rnwhmss334" path="res://addons/SphynxMotionBlurToolkit/Guertin/ShaderFiles/guertin_overlay.glsl" id="2_evkw4"]
+
+[resource]
+script = ExtResource("1_2uett")
+shader_file = ExtResource("2_evkw4")

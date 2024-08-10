@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://i6rnwhmss334"
+path="res://.godot/imported/guertin_overlay.glsl-506c18362b63cb0a2477b4a4fbfea046.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/Guertin/ShaderFiles/guertin_overlay.glsl"
+dest_files=["res://.godot/imported/guertin_overlay.glsl-506c18362b63cb0a2477b4a4fbfea046.res"]
+
+[params]
+

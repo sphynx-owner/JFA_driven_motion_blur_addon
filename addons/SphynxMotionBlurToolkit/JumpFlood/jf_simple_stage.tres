@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://bj3exhmsfcx4w"]
+
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_v4e3u"]
+[ext_resource type="RDShaderFile" uid="uid://c4dywnp7k8rph" path="res://addons/SphynxMotionBlurToolkit/JumpFlood/ShaderFiles/jfp_simple.glsl" id="2_msxel"]
+
+[resource]
+script = ExtResource("1_v4e3u")
+shader_file = ExtResource("2_msxel")

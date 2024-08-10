@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://d2rdmkpi41wf1"]
+
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_4imrj"]
+[ext_resource type="RDShaderFile" uid="uid://deow8m5u2ji84" path="res://addons/SphynxMotionBlurToolkit/McGuire/ShaderFiles/mcguire_tile_max_y.glsl" id="2_8ewid"]
+
+[resource]
+script = ExtResource("1_4imrj")
+shader_file = ExtResource("2_8ewid")

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://clwi2fnp1nm3r"]
+
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_eeyf1"]
+[ext_resource type="RDShaderFile" uid="uid://rkkajixdjosk" path="res://addons/SphynxMotionBlurToolkit/JumpFlood/ShaderFiles/jfp_backtracking_experimental.glsl" id="2_o6bvw"]
+
+[resource]
+script = ExtResource("1_eeyf1")
+shader_file = ExtResource("2_o6bvw")
