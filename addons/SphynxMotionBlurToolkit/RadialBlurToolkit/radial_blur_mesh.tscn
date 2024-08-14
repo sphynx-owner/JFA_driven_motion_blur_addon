@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://8p6li7o742g3"]
 
-[ext_resource type="Shader" path="res://RadialBlurTest/radial_blur_mesh.gdshader" id="1_36vys"]
-[ext_resource type="Script" path="res://RadialBlurTest/radial_blur_mesh.gd" id="2_cfhks"]
+[ext_resource type="Shader" path="res://addons/SphynxMotionBlurToolkit/RadialBlurToolkit/radial_blur_mesh.gdshader" id="1_36vys"]
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/RadialBlurToolkit/radial_blur_mesh.gd" id="2_cfhks"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_pgvyt"]
 resource_local_to_scene = true

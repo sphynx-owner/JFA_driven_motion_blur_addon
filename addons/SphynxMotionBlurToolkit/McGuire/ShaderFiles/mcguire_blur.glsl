@@ -14,9 +14,9 @@ layout(rgba16f, set = 0, binding = 6) uniform image2D past_color_image;
 
 layout(push_constant, std430) uniform Params 
 {	
-	float minimum_user_threshold;
-	float importance_bias;
-	float maximum_jitter_value;
+	float nan5;
+	float nan6;
+	float nan7;
 	float nan8;
 	int tile_size;
 	int sample_count;

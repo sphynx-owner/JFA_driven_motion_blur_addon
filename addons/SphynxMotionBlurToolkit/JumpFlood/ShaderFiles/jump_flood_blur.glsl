@@ -11,14 +11,6 @@ layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
 layout(set = 0, binding = 2) uniform sampler2D vector_sampler;
 layout(set = 0, binding = 3) uniform sampler2D velocity_map;
 layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D output_image;
-layout(rgba16f, set = 0, binding = 5) uniform writeonly image2D debug_1_image;
-layout(rgba16f, set = 0, binding = 6) uniform writeonly image2D debug_2_image;
-layout(rgba16f, set = 0, binding = 7) uniform writeonly image2D debug_3_image;
-layout(rgba16f, set = 0, binding = 8) uniform writeonly image2D debug_4_image;
-layout(rgba16f, set = 0, binding = 9) uniform writeonly image2D debug_5_image;
-layout(rgba16f, set = 0, binding = 10) uniform writeonly image2D debug_6_image;
-layout(rgba16f, set = 0, binding = 11) uniform writeonly image2D debug_7_image;
-layout(rgba16f, set = 0, binding = 12) uniform writeonly image2D debug_8_image;
 
 layout(push_constant, std430) uniform Params 
 {

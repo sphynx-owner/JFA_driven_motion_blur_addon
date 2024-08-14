@@ -6,16 +6,11 @@
 #define M_PI 3.1415926535897932384626433832795
 
 layout(set = 0, binding = 0) uniform sampler2D color_sampler;
-layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
-layout(set = 0, binding = 2) uniform sampler2D velocity_sampler;
-layout(set = 0, binding = 3) uniform sampler2D neighbor_max;
-layout(set = 0, binding = 4) uniform sampler2D tile_variance;
-layout(rgba16f, set = 0, binding = 5) uniform writeonly image2D output_color;
-layout(rgba16f, set = 0, binding = 6) uniform image2D past_color_image;
-layout(rgba16f, set = 0, binding = 6) uniform image2D debug_1_image;
-layout(rgba16f, set = 0, binding = 7) uniform image2D debug_2_image;
-layout(rgba16f, set = 0, binding = 8) uniform image2D debug_3_image;
-layout(rgba16f, set = 0, binding = 9) uniform image2D debug_4_image;
+layout(set = 0, binding = 1) uniform sampler2D velocity_sampler;
+layout(set = 0, binding = 2) uniform sampler2D neighbor_max;
+layout(set = 0, binding = 3) uniform sampler2D tile_variance;
+layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D output_color;
+
 
 layout(push_constant, std430) uniform Params 
 {	
@@ -53,7 +48,7 @@ float cylinder(float T, float v)
 // ----------------------------------------------------------
 float z_compare(float a, float b, float sze)
 {
-	return clamp(1. - sze * (a - b) / min(a, b), 0, 1);
+	return clamp(1. - sze * (a - b), 0, 1);
 }
 // ----------------------------------------------------------
 
@@ -73,7 +68,7 @@ float interleaved_gradient_noise(vec2 uv){
 vec2 safenorm(vec2 v)
 {
 	float l = max(length(v), 1e-6);
-	return v / l * int(1 >= 0.5);
+	return v / l * int(l >= 0.5);
 }
 
 vec2 jitter_tile(vec2 uvi)
@@ -100,7 +95,9 @@ void main()
 	
 	float j = interleaved_gradient_noise(uvi) * 2. - 1.;
 
-	vec2 vn = textureLod(neighbor_max, x + jitter_tile(uvi), 0.0).xy * render_size / 2.;
+	vec4 vnzw =  textureLod(neighbor_max, x + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1);
+
+	vec2 vn = vnzw.xy;
 
 	float vn_length = length(vn);
 
@@ -109,16 +106,20 @@ void main()
 	if(vn_length < 0.5)
 	{
 		imageStore(output_color, uvi, base_color);
+#ifdef DEBUG
 		imageStore(debug_1_image, uvi, base_color);
 		imageStore(debug_2_image, uvi, vec4(vn / render_size * 2, 0, 1));
 		imageStore(debug_3_image, uvi, vec4(0));
 		imageStore(debug_4_image, uvi, vec4(0));
+#endif
 		return;
 	}
 
 	vec2 wn = safenorm(vn);
 
-	vec2 vx = textureLod(velocity_sampler, x, 0.0).xy * render_size / 2.;
+	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1);
+
+	vec2 vx = vxzw.xy;
 
 	float vx_length = max(0.5, length(vx));
 
@@ -133,7 +134,7 @@ void main()
 
 	vec2 wc = safenorm(mix(wp, wx, clamp((vx_length - 0.5) / params.minimum_user_threshold, 0, 1)));
 
-	float zx = -0.05 / max(FLT_MIN, textureLod(depth_sampler, x, 0.0).x);
+	float zx = vxzw.w;
 	
 	float total_weight = params.sample_count / (params.importance_bias * vx_length);
 
@@ -145,6 +146,8 @@ void main()
 		
 		vec2 d = ((i % 2) > 0) ? vx : vn;
 
+		float dz = ((i % 2) > 0) ? vxzw.z : vnzw.z;
+
 		vec2 wd = safenorm(d);
 
 		float T = abs(t * vn_length);
@@ -153,14 +156,16 @@ void main()
 
 		float wa = dot(wc, wd);
 		
-		vec2 vy = textureLod(velocity_sampler, y, 0.0).xy * render_size / 2;
+		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1);
+		
+		vec2 vy = vyzw.xy - dz * t; 
 	
 		float vy_length = max(0.5, length(vy));
 
-		float zy = -0.05 / max(FLT_MIN, textureLod(depth_sampler, y, 0.0).x);
+		float zy = vyzw.w;
 
-		float f = z_compare(zy, zx, 15);
-		float b = z_compare(zx, zy, 15);
+		float f = z_compare(-zy, -zx, 20000);
+		float b = z_compare(-zx, -zy, 20000);
 
 		float wb = abs(dot(vy / vy_length, wd));
 
@@ -177,8 +182,10 @@ void main()
 	sum /= total_weight;
 
 	imageStore(output_color, uvi, sum);
+#ifdef DEBUG
 	imageStore(debug_1_image, uvi, sum);
 	imageStore(debug_2_image, uvi, vec4(vn / render_size * 2, 0, 1));
-	imageStore(debug_3_image, uvi, vec4(0));
-	imageStore(debug_4_image, uvi, vec4(0));
+	imageStore(debug_3_image, uvi, vnzw);
+	imageStore(debug_4_image, uvi, vxzw);
+#endif
 }

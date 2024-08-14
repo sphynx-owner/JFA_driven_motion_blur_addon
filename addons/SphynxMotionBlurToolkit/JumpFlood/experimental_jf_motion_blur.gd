@@ -1,5 +1,6 @@
 extends "res://addons/SphynxMotionBlurToolkit/JumpFlood/base_jump_flood_motion_blur.gd"
-class_name SphynxSimpleJumpFloodMotionBlur
+class_name ExperimentalJumpFloodMotionBlur
+
 @export_group("Shader Stages")
 @export var tile_max_x_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/jump_flood_tile_max_x_stage.tres"):
 	set(value):
@@ -25,10 +26,16 @@ class_name SphynxSimpleJumpFloodMotionBlur
 		neighbor_max_stage = value
 		subscirbe_shader_stage(value)
 
-@export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/simple_jf_blur_stage.tres"):
+@export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/experimental_jump_flood_blur_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(blur_stage)
 		blur_stage = value
+		subscirbe_shader_stage(value)
+
+@export var cache_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/jump_flood_cache_stage.tres"):
+	set(value):
+		unsubscribe_shader_stage(cache_stage)
+		cache_stage = value
 		subscirbe_shader_stage(value)
 
 @export var overlay_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/jump_flood_overlay_stage.tres"):
@@ -45,10 +52,15 @@ var neighbor_max : StringName = "neighbor_max"
 
 var output_color : StringName = "output_color"
 
+var past_color : StringName = "past_color_cache"
+
+var past_velocity : StringName = "past_velocity_cache"
+
 var buffer_a : StringName = "buffer_a"
 var buffer_b : StringName = "buffer_b"
 
 var custom_velocity : StringName = "custom_velocity"
+
 var temp_intensity : float
 
 var previous_time : float = 0
@@ -77,12 +89,14 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	ensure_texture(buffer_b, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / sample_step_multiplier, 1. / sample_step_multiplier))
 	ensure_texture(neighbor_max, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / sample_step_multiplier, 1. / sample_step_multiplier))
 	ensure_texture(output_color, render_scene_buffers)
+	ensure_texture(past_color, render_scene_buffers)
+	ensure_texture(past_velocity, render_scene_buffers)
 	
 	rd.draw_command_begin_label("Motion Blur", Color(1.0, 1.0, 1.0, 1.0))
 	
 	var last_iteration_index : int = JFA_pass_count - 1;
 	
-	var max_dilation_radius : float = pow(2 + step_exponent_modifier, last_iteration_index) * sample_step_multiplier;
+	var max_dilation_radius : float = pow(2 + step_exponent_modifier, last_iteration_index) * sample_step_multiplier / intensity;
 	
 	var tile_max_x_push_constants: PackedFloat32Array = [
 		0,
@@ -152,6 +166,8 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		var color_image := render_scene_buffers.get_color_layer(view)
 		var depth_image := render_scene_buffers.get_depth_layer(view)
 		var output_color_image := render_scene_buffers.get_texture_slice(context, output_color, view, 0, 1, 1)
+		var past_color_image := render_scene_buffers.get_texture_slice(context, past_color, view, 0, 1, 1)
+		var past_velocity_image := render_scene_buffers.get_texture_slice(context, past_velocity, view, 0, 1, 1)
 		var buffer_a_image := render_scene_buffers.get_texture_slice(context, buffer_a, view, 0, 1, 1)
 		var buffer_b_image := render_scene_buffers.get_texture_slice(context, buffer_b, view, 0, 1, 1)
 		var custom_velocity_image := render_scene_buffers.get_texture_slice(context, custom_velocity, view, 0, 1, 1)
@@ -165,7 +181,8 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		dispatch_stage(tile_max_x_stage, 
 		[
 			get_sampler_uniform(custom_velocity_image, 0, false),
-			get_image_uniform(tile_max_x_image, 1)
+			get_sampler_uniform(depth_image, 1, false),
+			get_image_uniform(tile_max_x_image, 2)
 		],
 		tile_max_x_push_constants_byte_array,
 		Vector3i(x_groups, y_groups, 1), 
@@ -219,7 +236,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				get_image_uniform(buffer_a_image, 1),
 				get_image_uniform(buffer_b_image, 2),
 				get_sampler_uniform(buffer_a_image, 3, false),
-				get_sampler_uniform(buffer_b_image, 4, false),
+				get_sampler_uniform(buffer_b_image, 4, false)
 			],
 			jf_byte_array,
 			Vector3i(x_groups, y_groups, 1), 
@@ -248,10 +265,24 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 			get_sampler_uniform(neighbor_max_image, 3, false),
 			get_image_uniform(output_color_image, 4),
 			get_sampler_uniform(tile_max_image, 5, false),
+			get_sampler_uniform(past_color_image, 6, false),
+			get_sampler_uniform(past_velocity_image, 7, false)
 		],
 		byte_array,
 		Vector3i(x_groups, y_groups, 1), 
 		"Compute Blur", 
+		view)
+		
+		dispatch_stage(cache_stage, 
+		[
+			get_sampler_uniform(custom_velocity_image, 0),
+			get_sampler_uniform(color_image, 1),
+			get_image_uniform(past_velocity_image, 2),
+			get_image_uniform(past_color_image, 3),
+		],
+		[],
+		Vector3i(x_groups, y_groups, 1), 
+		"Past Color Copy", 
 		view)
 		
 		dispatch_stage(overlay_stage, 

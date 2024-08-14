@@ -9,14 +9,6 @@
 layout(rgba16f, set = 0, binding = 0) uniform image2D past_color_image;
 layout(rgba16f, set = 0, binding = 1) uniform image2D output_color_image;
 layout(set = 0, binding = 2) uniform sampler2D color_sampler;
-layout(set = 0, binding = 3) uniform sampler2D debug_sampler_1;
-layout(set = 0, binding = 4) uniform sampler2D debug_sampler_2;
-layout(set = 0, binding = 5) uniform sampler2D debug_sampler_3;
-layout(set = 0, binding = 6) uniform sampler2D debug_sampler_4;
-layout(set = 0, binding = 7) uniform sampler2D debug_sampler_5;
-layout(set = 0, binding = 8) uniform sampler2D debug_sampler_6;
-layout(set = 0, binding = 9) uniform sampler2D debug_sampler_7;
-layout(set = 0, binding = 10) uniform sampler2D debug_sampler_8;
 
 layout(push_constant, std430) uniform Params 
 {
@@ -66,22 +58,24 @@ void main()
 	vec4 bl_col;
 
 	vec4 br_col;
-	
+
+#ifdef DEBUG
 	if(params.debug_page == 0)
 	{
-		tl_col = textureLod(debug_sampler_1, uvn, 0.0);
-		tr_col = textureLod(debug_sampler_2, uvn, 0.0);
-		bl_col = textureLod(debug_sampler_3, uvn, 0.0);
-		br_col = textureLod(debug_sampler_4, uvn, 0.0);
+		tl_col = imageLoad(debug_1_image, uvi);
+		tr_col = imageLoad(debug_2_image, uvi);
+		bl_col = imageLoad(debug_3_image, uvi);
+		br_col = imageLoad(debug_4_image, uvi);
 	}
 	if(params.debug_page == 1)
 	{
-		tl_col = textureLod(debug_sampler_5, uvn, 0.0);
-		tr_col = textureLod(debug_sampler_6, uvn, 0.0);
-		bl_col = textureLod(debug_sampler_7, uvn, 0.0);
-		br_col = textureLod(debug_sampler_8, uvn, 0.0);
+		tl_col = imageLoad(debug_5_image, uvi);
+		tr_col = imageLoad(debug_6_image, uvi);
+		bl_col = imageLoad(debug_7_image, uvi);
+		br_col = imageLoad(debug_8_image, uvi);
 	}
-	
+#endif
+
 	imageStore(output_color_image, uvi / 2, tl_col);
 	imageStore(output_color_image, uvi / 2 + ivec2(vec2(0.5, 0.5) * render_size), br_col);
 	imageStore(output_color_image, uvi / 2 + ivec2(vec2(0.0, 0.5) * render_size), bl_col);

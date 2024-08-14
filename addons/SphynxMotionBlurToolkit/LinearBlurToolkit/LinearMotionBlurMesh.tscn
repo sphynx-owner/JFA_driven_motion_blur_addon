@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8aytbebcsmv8"]
+
+[ext_resource type="Shader" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/LinearMotionBlurMesh.gdshader" id="1_m7mjv"]
+[ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/linear_motion_blur_mesh.gd" id="2_glqur"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_lylv4"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_oosyj"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("1_m7mjv")
+shader_parameter/local_stretch_axis = Vector3(0, 1, 0)
+shader_parameter/movement_speed = 0.0
+shader_parameter/sample_count = 8
+shader_parameter/debug_toggle = 0.0
+shader_parameter/debug_color = Color(0, 0, 0, 0)
+
+[node name="LinearMotionBlurMesh" type="MeshInstance3D"]
+mesh = SubResource("BoxMesh_lylv4")
+surface_material_override/0 = SubResource("ShaderMaterial_oosyj")
+script = ExtResource("2_glqur")

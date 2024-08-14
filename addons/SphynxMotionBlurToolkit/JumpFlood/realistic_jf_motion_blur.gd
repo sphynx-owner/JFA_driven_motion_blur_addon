@@ -1,5 +1,6 @@
 extends "res://addons/SphynxMotionBlurToolkit/JumpFlood/base_jump_flood_motion_blur.gd"
-class_name SphynxSimpleJumpFloodMotionBlur
+class_name SphynxRealisticJumpFloodMotionBlur
+
 @export_group("Shader Stages")
 @export var tile_max_x_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/jump_flood_tile_max_x_stage.tres"):
 	set(value):
@@ -25,7 +26,7 @@ class_name SphynxSimpleJumpFloodMotionBlur
 		neighbor_max_stage = value
 		subscirbe_shader_stage(value)
 
-@export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/simple_jf_blur_stage.tres"):
+@export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/realistic_jf_blur_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(blur_stage)
 		blur_stage = value

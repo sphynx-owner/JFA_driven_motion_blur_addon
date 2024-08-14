@@ -10,15 +10,9 @@ layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
 layout(set = 0, binding = 2) uniform sampler2D vector_sampler;
 layout(set = 0, binding = 3) uniform sampler2D velocity_map;
 layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D output_image;
-layout(rgba16f, set = 0, binding = 5) uniform writeonly image2D debug_1_image;
-layout(rgba16f, set = 0, binding = 6) uniform writeonly image2D debug_2_image;
-layout(rgba16f, set = 0, binding = 7) uniform writeonly image2D debug_3_image;
-layout(rgba16f, set = 0, binding = 8) uniform writeonly image2D debug_4_image;
-layout(rgba16f, set = 0, binding = 9) uniform writeonly image2D debug_5_image;
-layout(rgba16f, set = 0, binding = 10) uniform writeonly image2D debug_6_image;
-layout(rgba16f, set = 0, binding = 11) uniform writeonly image2D debug_7_image;
-layout(rgba16f, set = 0, binding = 12) uniform writeonly image2D debug_8_image;
-layout(set = 0, binding = 13) uniform sampler2D tile_max;
+layout(set = 0, binding = 5) uniform sampler2D tile_max;
+layout(set = 0, binding = 6) uniform sampler2D past_color_sampler;
+layout(set = 0, binding = 7) uniform sampler2D past_velocity_sampler;
 
 layout(push_constant, std430) uniform Params 
 {
@@ -131,18 +125,33 @@ void main()
 	vec3 vxz = textureLod(vector_sampler, x, 0.0).xyz * vec3(render_size, 1);// * 2;
 	
 	vec2 vx = vxz.xy;
+	
+	vec3 past_vxz = textureLod(past_velocity_sampler, x, 0.0).xyz * vec3(render_size, 1);
+
+	vec2 past_vx = past_vxz.xy;
+
+	float velocity_match = pow(clamp(dot(vx, vn) / dot(vn, vn), 0, 1), 0.5);
+
+	vn = mix(vn, vx, velocity_match);
+
+	vnz = mix(vnz, vxz, velocity_match);
+
+	vec4 past_col_x = textureLod(past_color_sampler, x, 0.0);
 
 	if(vn_length <= 0.5)
 	{
 		imageStore(output_image, uvi, col_x);	
+
+#ifdef DEBUG
 		imageStore(debug_1_image, uvi, col_x);
 		imageStore(debug_2_image, uvi, abs(vec4(vn / render_size * 10, vnz.z * 100, 1)));
 		imageStore(debug_3_image, uvi, abs(vec4(velocity_map_sample - x, 0, 1)));
 		imageStore(debug_4_image, uvi, abs(vec4(vx / render_size * 10, vxz.z * 100, 1)));
-		imageStore(debug_5_image, uvi, 10 * abs(textureLod(tile_max, x, 0.0)));
-		imageStore(debug_6_image, uvi, 10 * abs(textureLod(tile_max, textureLod(velocity_map, x, 0.0).xy, 0.0)));
-		imageStore(debug_7_image, uvi, 10 * abs(textureLod(velocity_map, x, 0.0)));
-		imageStore(debug_8_image, uvi, abs(textureLod(velocity_map, x, 0.0) / 10));
+		imageStore(debug_5_image, uvi, col_x);
+		imageStore(debug_6_image, uvi, past_col_x);
+		imageStore(debug_7_image, uvi, past_col_x);
+		imageStore(debug_8_image, uvi, abs(vec4(past_vx / render_size * 10, past_vxz.z * 100, 1)));
+#endif
 		return;
 	}
 
@@ -191,6 +200,8 @@ void main()
 		
 		float nai_dz = vxz.z;
 
+		vec2 past_nai_d = past_vx;
+
 		float dz = vnz.z;//sample_main_v ? vnz.z : vxz.z;
 
 		vec2 wd = safenorm(d);
@@ -198,6 +209,8 @@ void main()
 		vec2 y = x + (d / render_size) * t;
 
 		vec2 nai_y = x + (nai_d / render_size) * t;
+
+		vec2 past_nai_y = x + (past_nai_d / render_size) * t;
 
 		float nai_y_length = max(0.5, length(nai_y));
 
@@ -234,25 +247,27 @@ void main()
 
 		float nai_cone_y = cone(T, nai_vy_length);
 
-		float ay = max(f * wa * step(FLT_MIN, cone_y), b * wb * cone_x);
+		float ay_trail = f * wa * step(FLT_MIN, cone_y);
+		
+		float ay_lead = (1 - f) * wb * step(FLT_MIN, cone_x);
 
-		float nai_ay = nai_b;
+		float nai_ay = nai_b;//max(nai_b, nai_f * nai_wa * step(FLT_MIN, nai_cone_y));
 
 		vec4 col_y = textureLod(color_sampler, y, 0.0);
+
+		vec4 past_col_y = textureLod(past_color_sampler, past_nai_y, 0.0);
 
 		vec4 nai_col_y = textureLod(color_sampler, nai_y, 0.0);
 
 		vec4 col_back = nai_col_y;
 
-		float back_weight = mix(0, 1, nai_ay);
+		total_back_weight += nai_ay;
 
-		total_back_weight += back_weight;
+		back_sum += col_back * nai_ay;
 
-		back_sum += col_back * back_weight;
+		weight += ay_trail + ay_lead;
 
-		weight += ay;
-
-		sum += col_y * ay;
+		sum += col_y * ay_trail + past_col_y * ay_lead;
 	}
 
 	back_sum *= (params.motion_blur_samples - weight) / total_back_weight;
@@ -262,13 +277,15 @@ void main()
 	back_sum /= params.motion_blur_samples;
 	
 	imageStore(output_image, uvi, sum + back_sum);
-	
+
+#ifdef DEBUG
 	imageStore(debug_1_image, uvi, sum + back_sum);
 	imageStore(debug_2_image, uvi, abs(vec4(vn / render_size * 10, vnz.z * 100, 1)));
 	imageStore(debug_3_image, uvi, abs(vec4(velocity_map_sample - x, 0, 1)));
 	imageStore(debug_4_image, uvi, abs(vec4(vx / render_size * 10, vxz.z * 100, 1)));
-	imageStore(debug_5_image, uvi, 10 * abs(textureLod(tile_max, x, 0.0)));
-	imageStore(debug_6_image, uvi, 10 * abs(textureLod(tile_max, textureLod(velocity_map, x, 0.0).xy, 0.0)));
-	imageStore(debug_7_image, uvi, 10 * abs(textureLod(velocity_map, x, 0.0)));
-	imageStore(debug_8_image, uvi, abs(textureLod(velocity_map, x, 0.0) / 10));
+	imageStore(debug_5_image, uvi, col_x);//sum + back_sum);
+	imageStore(debug_6_image, uvi, past_col_x);
+	imageStore(debug_7_image, uvi, past_col_x);
+	imageStore(debug_8_image, uvi, abs(vec4(past_vx / render_size * 10, past_vxz.z * 100, 1)));
+#endif
 }

@@ -5,8 +5,7 @@
 #define FLT_MIN 1.175494351e-38
 
 layout(set = 0, binding = 0) uniform sampler2D velocity_sampler;
-layout(set = 0, binding = 1) uniform sampler2D depth_sampler;
-layout(rgba16f, set = 0, binding = 2) uniform writeonly image2D tile_max_x;
+layout(rgba16f, set = 0, binding = 1) uniform writeonly image2D tile_max_x;
 
 layout(push_constant, std430) uniform Params 
 {	
@@ -40,16 +39,22 @@ void main()
 	vec4 max_velocity = vec4(0);
 
 	float max_velocity_length = -1;
+	
+	//bool foreground = false;
 
 	for(int i = 0; i < tile_size; i++)
 	{
 		vec2 current_uv = uvn + vec2(float(i) / render_size.x, 0);
-		vec3 velocity_sample = textureLod(velocity_sampler, current_uv, 0.0).xyz;
+		vec4 velocity_sample = textureLod(velocity_sampler, current_uv, 0.0);
 		float current_velocity_length = dot(velocity_sample.xy, velocity_sample.xy);
-		if(current_velocity_length > max_velocity_length)
+		if(current_velocity_length > max_velocity_length)// || (velocity_sample.w > 0 && !foreground))
 		{
 			max_velocity_length = current_velocity_length;
-			max_velocity = vec4(velocity_sample, textureLod(depth_sampler, current_uv, 0.0).x);
+			max_velocity = vec4(velocity_sample);
+//			if(velocity_sample.w > 0)
+//			{
+//				foreground = true;
+//			}
 		}
 	}
 	imageStore(tile_max_x, uvi, max_velocity);

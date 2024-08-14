@@ -1,4 +1,4 @@
-extends EnhancedCompositorEffect
+extends "res://addons/SphynxMotionBlurToolkit/BaseClasses/enhanced_compositor_effect.gd"
 class_name DebugCompositorEffect
 
 @export var overlay_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/Debug/debug_overlay_shader_stage.tres"):
@@ -15,21 +15,13 @@ class_name DebugCompositorEffect
 ## and depth buffers debug views
 @export var debug_page : int = 0
 
-@export var debug_1 : String = "debug_1"
-@export var debug_2 : String = "debug_2"
-@export var debug_3 : String = "debug_3"
-@export var debug_4 : String = "debug_4"
-@export var debug_5 : String = "debug_5"
-@export var debug_6 : String = "debug_6"
-@export var debug_7 : String = "debug_7"
-@export var debug_8 : String = "debug_8"
-
 var past_color : StringName = "past_color"
 
 var freeze : bool = false
 
 func _init():
 	set_deferred("context", "MotionBlur")
+	set_deferred("debug", true)
 	super()
 
 func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSceneBuffersRD, render_scene_data : RenderSceneDataRD):

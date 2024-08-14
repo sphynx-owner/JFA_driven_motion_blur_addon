@@ -1,13 +1,7 @@
-extends MotionBlurCompositorEffect
+extends "res://addons/SphynxMotionBlurToolkit/Guertin/base_guertin_motion_blur.gd"
 class_name GuertinMotionBlur
 
-@export_group("Motion Blur", "motion_blur_")
-# diminishing returns over 16
-@export_range(4, 64) var motion_blur_samples: int = 25
-# you really don't want this over 0.5, but you can if you want to try
-@export_range(0, 0.5, 0.001, "or_greater") var motion_blur_intensity: float = 1
-@export_range(0, 1) var motion_blur_center_fade: float = 0.0
-
+@export_group("Shader Stages")
 @export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/Guertin/guertin_blur_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(blur_stage)
@@ -44,16 +38,6 @@ class_name GuertinMotionBlur
 		tile_variance_stage = value
 		subscirbe_shader_stage(value)
 
-@export var tile_size : int = 40
-
-@export var linear_falloff_slope : float = 1
-
-@export var importance_bias : float = 40
-
-@export var maximum_jitter_value : float = 0.95
-
-@export var minimum_user_threshold : float = 1.5
-
 var output_color: StringName = "output_color"
 
 var tile_max_x : StringName = "tile_max_x"
@@ -65,11 +49,6 @@ var neighbor_max : StringName = "neighbor_max"
 var tile_variance : StringName = "tile_variance"
 
 var custom_velocity : StringName = "custom_velocity"
-
-var debug_1 : StringName = "debug_1"
-var debug_2 : StringName = "debug_2"
-var debug_3 : StringName = "debug_3"
-var debug_4 : StringName = "debug_4"
 
 var freeze : bool = false
 
@@ -83,10 +62,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	ensure_texture(tile_variance, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / tile_size, 1. / tile_size))
 	ensure_texture(custom_velocity, render_scene_buffers)
 	ensure_texture(output_color, render_scene_buffers)
-	ensure_texture(debug_1, render_scene_buffers)
-	ensure_texture(debug_2, render_scene_buffers)
-	ensure_texture(debug_3, render_scene_buffers)
-	ensure_texture(debug_4, render_scene_buffers)
 	
 	rd.draw_command_begin_label("Motion Blur", Color(1.0, 1.0, 1.0, 1.0))
 	
@@ -158,7 +133,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	]
 	var int_blur_push_constants : PackedInt32Array = [
 		tile_size,
-		motion_blur_samples,
+		samples,
 		Engine.get_frames_drawn() % 8,
 		0
 	]
@@ -176,10 +151,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		var neighbor_max_image := render_scene_buffers.get_texture_slice(context, neighbor_max, view, 0, 1, 1)
 		var tile_variance_image := render_scene_buffers.get_texture_slice(context, tile_variance, view, 0, 1, 1)
 		var custom_velocity_image := render_scene_buffers.get_texture_slice(context, custom_velocity, view, 0, 1, 1)
-		var debug_1_image := render_scene_buffers.get_texture_slice(context, debug_1, view, 0, 1, 1)
-		var debug_2_image := render_scene_buffers.get_texture_slice(context, debug_2, view, 0, 1, 1)
-		var debug_3_image := render_scene_buffers.get_texture_slice(context, debug_3, view, 0, 1, 1)
-		var debug_4_image := render_scene_buffers.get_texture_slice(context, debug_4, view, 0, 1, 1)
 		
 		var x_groups := floori((render_size.x / tile_size - 1) / 16 + 1)
 		var y_groups := floori((render_size.y - 1) / 16 + 1)
@@ -234,15 +205,10 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		dispatch_stage(blur_stage, 
 		[
 			get_sampler_uniform(color_image, 0, false),
-			get_sampler_uniform(depth_image, 1, false),
-			get_sampler_uniform(custom_velocity_image, 2, false),
-			get_sampler_uniform(neighbor_max_image, 3, false),
-			get_sampler_uniform(tile_variance_image, 4, true),
-			get_image_uniform(output_color_image, 5),
-			get_image_uniform(debug_1_image, 6),
-			get_image_uniform(debug_2_image, 7),
-			get_image_uniform(debug_3_image, 8),
-			get_image_uniform(debug_4_image, 9)
+			get_sampler_uniform(custom_velocity_image, 1, false),
+			get_sampler_uniform(neighbor_max_image, 2, false),
+			get_sampler_uniform(tile_variance_image, 3, true),
+			get_image_uniform(output_color_image, 4),
 		],
 		blur_push_constants_byte_array,
 		Vector3i(x_groups, y_groups, 1), 

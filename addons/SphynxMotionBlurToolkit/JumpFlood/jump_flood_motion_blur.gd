@@ -1,13 +1,7 @@
-extends MotionBlurCompositorEffect
+extends "res://addons/SphynxMotionBlurToolkit/JumpFlood/base_jump_flood_motion_blur.gd"
 class_name SphynxOldJumpFloodMotionBlur
 
-@export_group("Motion Blur", "motion_blur_")
-# diminishing returns over 16
-@export_range(4, 64) var motion_blur_samples: int = 8
-# you really don't want this over 0.5, but you can if you want to try
-@export_range(0, 0.5, 0.001, "or_greater") var motion_blur_intensity: float = 1
-@export_range(0, 1) var motion_blur_center_fade: float = 0.0
-
+@export_group("Shader Stages")
 @export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/JumpFlood/jump_flood_blur_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(blur_stage)
@@ -25,25 +19,6 @@ class_name SphynxOldJumpFloodMotionBlur
 		unsubscribe_shader_stage(construct_stage)
 		construct_stage = value
 		subscirbe_shader_stage(value)
-
-## the portion of speed that is allowed for side bleed of velocities 
-## during the jfa dilation passes and before backtracking. Getting this a higher value
-## would make it so that meshes at movement blur more reliably, but also bleed 
-## further perpendicularly to their velocity, thus wash elemets behind them out.
-@export var perpen_error_threshold : float = 0.5
-
-## an initial step size that can increase the dilation radius proportionally, at the 
-## sacrifice of some quality in the final resolution of the dilation.[br][br]
-## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
-@export var sample_step_multiplier : float = 16
-
-## by default, the jump flood makes samples along distances that start
-## at 2 to the power of the pass count you want to perform, which is also 
-## the dilation radius you desire. You can change it to values higher than 
-## 2 with this variable, and reach higher dilation radius at the sacrifice of
-## some accuracy in the dilation.
-## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
-@export var step_exponent_modifier : float = 1
 
 ## how many steps along a range of 2 velocities from the 
 ## dilation target velocity space do we go along to find a better fitting velocity sample
@@ -65,27 +40,6 @@ class_name SphynxOldJumpFloodMotionBlur
 ## considered (in NDC space)
 @export var backtracbing_depth_match_threshold : float = 0.001
 
-## the number of passes performed by the jump flood algorithm based dilation, 
-## each pass added doubles the maximum radius of dilation available.[br][br]
-## the formula for the maximum radius of the dilation (in pixels) is: pow(2 + step_exponent_modifier, JFA_pass_count) * sample_step_multiplier
-@export var JFA_pass_count : int = 3
-
-## wether this motion blur stays the same intensity below
-## target_constant_framerate
-@export var framerate_independent : bool = true
-
-## Description: Removes clamping on motion blur scale to allow framerate independent motion
-## blur to scale longer than realistically possible when render framerate is higher
-## than target framerate.[br][br]
-## [color=yellow]Warning:[/color] Turning this on would allow over-blurring of pixels, which 
-## produces inaccurate results, and would likely cause nausea in players over
-## long exposure durations, use with caution and out of artistic intent
-@export var uncapped_independence : bool = false
-
-## if framerate_independent is enabled, the blur would simulate 
-## sutter speeds at that framerate, and up.
-@export var target_constant_framerate : float = 30
-
 var texture: StringName = "texture"
 
 var buffer_a : StringName = "buffer_a"
@@ -93,16 +47,7 @@ var buffer_b : StringName = "buffer_b"
 
 var custom_velocity : StringName = "custom_velocity"
 
-@export var debug_1 : String = "debug_1"
-@export var debug_2 : String = "debug_2"
-@export var debug_3 : String = "debug_3"
-@export var debug_4 : String = "debug_4"
-@export var debug_5 : String = "debug_5"
-@export var debug_6 : String = "debug_6"
-@export var debug_7 : String = "debug_7"
-@export var debug_8 : String = "debug_8"
-
-var temp_motion_blur_intensity : float
+var temp_intensity : float
 
 var previous_time : float = 0
 
@@ -113,7 +58,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	
 	previous_time = time
 	
-	temp_motion_blur_intensity = motion_blur_intensity
+	temp_intensity = intensity
 	
 	if framerate_independent:
 		var capped_frame_time : float = 1 / target_constant_framerate
@@ -121,7 +66,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		if !uncapped_independence:
 			capped_frame_time = min(capped_frame_time, delta_time)
 		
-		temp_motion_blur_intensity = motion_blur_intensity * capped_frame_time / delta_time
+		temp_intensity = intensity * capped_frame_time / delta_time
 	
 
 	ensure_texture(texture, render_scene_buffers)
@@ -129,25 +74,16 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	ensure_texture(buffer_b, render_scene_buffers)#, RenderingDevice.DATA_FORMAT_R16G16_SFLOAT)
 	ensure_texture(custom_velocity, render_scene_buffers)
 	
-	ensure_texture(debug_1, render_scene_buffers)
-	ensure_texture(debug_2, render_scene_buffers)
-	ensure_texture(debug_3, render_scene_buffers)
-	ensure_texture(debug_4, render_scene_buffers)
-	ensure_texture(debug_5, render_scene_buffers)
-	ensure_texture(debug_6, render_scene_buffers)
-	ensure_texture(debug_7, render_scene_buffers)
-	ensure_texture(debug_8, render_scene_buffers)
-	
 	rd.draw_command_begin_label("Motion Blur", Color(1.0, 1.0, 1.0, 1.0))
 	
 	var last_iteration_index : int = JFA_pass_count - 1;
 	
-	var max_dilation_radius : float = pow(2 + step_exponent_modifier, last_iteration_index) * sample_step_multiplier / motion_blur_intensity;
+	var max_dilation_radius : float = pow(2 + step_exponent_modifier, last_iteration_index) * sample_step_multiplier / intensity;
 	
 	var push_constant: PackedFloat32Array = [
-		motion_blur_samples, 
-		temp_motion_blur_intensity,
-		motion_blur_center_fade,
+		samples, 
+		temp_intensity,
+		center_fade,
 		Engine.get_frames_drawn() % 8, 
 		last_iteration_index, 
 		sample_step_multiplier,
@@ -171,14 +107,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		var buffer_a_image := render_scene_buffers.get_texture_slice(context, buffer_a, view, 0, 1, 1)
 		var buffer_b_image := render_scene_buffers.get_texture_slice(context, buffer_b, view, 0, 1, 1)
 		var custom_velocity_image := render_scene_buffers.get_texture_slice(context, custom_velocity, view, 0, 1, 1)
-		var debug_1_image := render_scene_buffers.get_texture_slice(context, debug_1, view, 0, 1, 1)
-		var debug_2_image := render_scene_buffers.get_texture_slice(context, debug_2, view, 0, 1, 1)
-		var debug_3_image := render_scene_buffers.get_texture_slice(context, debug_3, view, 0, 1, 1)
-		var debug_4_image := render_scene_buffers.get_texture_slice(context, debug_4, view, 0, 1, 1)
-		var debug_5_image := render_scene_buffers.get_texture_slice(context, debug_5, view, 0, 1, 1)
-		var debug_6_image := render_scene_buffers.get_texture_slice(context, debug_6, view, 0, 1, 1)
-		var debug_7_image := render_scene_buffers.get_texture_slice(context, debug_7, view, 0, 1, 1)
-		var debug_8_image := render_scene_buffers.get_texture_slice(context, debug_8, view, 0, 1, 1)
 		
 		rd.draw_command_begin_label("Construct blur " + str(view), Color(1.0, 1.0, 1.0, 1.0))
 		
@@ -214,7 +142,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 			var jf_float_push_constants_test : PackedFloat32Array = [
 				perpen_error_threshold,
 				sample_step_multiplier,
-				temp_motion_blur_intensity,
+				temp_intensity,
 				backtracking_velocity_match_threshold,
 				backtracking_velocity_match_parallel_sensitivity,
 				backtracking_velcoity_match_perpendicular_sensitivity,
@@ -243,14 +171,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 			get_sampler_uniform(custom_velocity_image, 2, false),
 			get_sampler_uniform(buffer_b_image if last_iteration_index % 2 else buffer_a_image, 3, false),
 			get_image_uniform(texture_image, 4),
-			get_image_uniform(debug_1_image, 5),
-			get_image_uniform(debug_2_image, 6),
-			get_image_uniform(debug_3_image, 7),
-			get_image_uniform(debug_4_image, 8),
-			get_image_uniform(debug_5_image, 9),
-			get_image_uniform(debug_6_image, 10),
-			get_image_uniform(debug_7_image, 11),
-			get_image_uniform(debug_8_image, 12),
 		],
 		byte_array,
 		Vector3i(x_groups, y_groups, 1), 

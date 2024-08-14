@@ -1,13 +1,7 @@
-extends MotionBlurCompositorEffect
+extends "res://addons/SphynxMotionBlurToolkit/McGuire/base_mcguire_motion_blur.gd"
 class_name McGuireMotionBlur
 
-@export_group("Motion Blur", "motion_blur_")
-# diminishing returns over 16
-@export_range(4, 64) var motion_blur_samples: int = 25
-# you really don't want this over 0.5, but you can if you want to try
-@export_range(0, 0.5, 0.001, "or_greater") var motion_blur_intensity: float = 1
-@export_range(0, 1) var motion_blur_center_fade: float = 0.0
-
+@export_group("Shader Stages")
 @export var blur_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/McGuire/mcguire_blur_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(blur_stage)
@@ -43,16 +37,6 @@ class_name McGuireMotionBlur
 		unsubscribe_shader_stage(tile_variance_stage)
 		tile_variance_stage = value
 		subscirbe_shader_stage(value)
-
-@export var tile_size : int = 40
-
-@export var linear_falloff_slope : float = 1
-
-@export var importance_bias : float = 40
-
-@export var maximum_jitter_value : float = 0.95
-
-@export var minimum_user_threshold : float = 1.5
 
 var output_color: StringName = "output_color"
 
@@ -145,14 +129,14 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 	tile_variance_push_constants_byte_array.append_array(int_tile_variance_push_constants.to_byte_array())
 	
 	var blur_push_constants: PackedFloat32Array = [
-		minimum_user_threshold, 
-		importance_bias,
-		maximum_jitter_value, 
+		0, 
+		0,
+		0, 
 		0,
 	]
 	var int_blur_push_constants : PackedInt32Array = [
 		tile_size,
-		motion_blur_samples,
+		samples,
 		Engine.get_frames_drawn() % 8,
 		0
 	]

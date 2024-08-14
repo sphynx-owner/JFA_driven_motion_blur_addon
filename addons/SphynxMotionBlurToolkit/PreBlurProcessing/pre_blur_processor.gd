@@ -1,16 +1,17 @@
-extends EnhancedCompositorEffect
+extends "res://addons/SphynxMotionBlurToolkit/BaseClasses/enhanced_compositor_effect.gd"
 class_name PreBlurProcessor
 
-
+@export_group("Shader Stages")
 @export var pre_blur_processor_stage : ShaderStageResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/pre_blur_processing_stage.tres"):
 	set(value):
 		unsubscribe_shader_stage(pre_blur_processor_stage)
 		pre_blur_processor_stage = value
 		subscirbe_shader_stage(value)
 
-@export var camera_rotation_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_component.tres")
-@export var camera_movement_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_component.tres")
-@export var object_movement_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_component.tres")
+@export_group("Blur Components")
+@export var camera_rotation_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_camera_rotation_component.tres")
+@export var camera_movement_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_camera_movement_component.tres")
+@export var object_movement_component : BlurVelocityComponentResource = preload("res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/default_object_movement_component.tres")
 
 var custom_velocity : StringName = "custom_velocity"
 

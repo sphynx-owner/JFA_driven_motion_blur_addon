@@ -146,7 +146,10 @@ void main()
 
 	vec3 past_uv = vec3(view_past_ndc.xy * 0.5 + 0.5, view_past_ndc.z);
 
+	vec4 view_past_ndc_cache = view_past_ndc;
+
 	vec3 camera_uv_change = past_uv - vec3(uvn, depth);
+
 	// get just rotation change
 	world_local_position = mat4(mat3(scene_data.inv_view_matrix)) * vec4(view_position.xyz, 1.0);
 
@@ -186,5 +189,16 @@ void main()
 		total_velocity = base_velocity;
 	}
 
-	imageStore(vector_output, uvi, vec4(total_velocity, 1.0));
+	float total_velocity_length = max(FLT_MIN, length(total_velocity));
+	total_velocity = total_velocity * clamp(total_velocity_length, 0, 1) / total_velocity_length;
+
+	imageStore(vector_output, uvi, vec4(total_velocity * (view_past_ndc_cache.w < 0 ? -1 : 1), depth));//, depth));//
+
+#ifdef DEBUG
+	vec2 velocity = textureLod(vector_sampler, uvn, 0.0).xy;
+	float velocity_length = length(velocity);
+	velocity = velocity * clamp(velocity_length, 0, 10) / velocity_length;
+	imageStore(debug_6_image, uvi, vec4(velocity * (view_past_ndc_cache.w < 0 ? -1 : 1), view_past_ndc_cache.w < 0 ? 1 : 0, 1));
+	imageStore(debug_7_image, uvi, vec4(camera_uv_change.xy, 0, 1));
+#endif
 }

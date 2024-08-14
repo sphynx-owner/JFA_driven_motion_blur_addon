@@ -34,9 +34,9 @@ void main()
 
 	vec2 uvn = (vec2(uvi) + vec2(0.5)) / render_size;
 
-	vec2 best_sample_uv = vec2(uvn);
+	vec2 max_neighbor_velocity = vec2(0);
 
-	float max_neighbor_velocity_length = -1;
+	float max_neighbor_depth = -1;
 
 	for(int i = -1; i < 2; i++)
 	{
@@ -49,19 +49,15 @@ void main()
 				continue;
 			}
 
-			vec2 velocity_map_sample = textureLod(tile_max_map, current_uv, 0.0).xy;
+			vec3 current_neighbor_sample = textureLod(tile_max_map, current_uv, 0.0).xyz;
 
-			vec4 velocity_sample = textureLod(tile_max, velocity_map_sample, 0.0);
-
-			float current_velocity_length = dot(velocity_sample.xy, velocity_sample.xy);
-			
-			if(current_velocity_length > max_neighbor_velocity_length)
+			if(current_neighbor_sample.z > max_neighbor_depth)
 			{
-				max_neighbor_velocity_length = current_velocity_length;
-				best_sample_uv = velocity_map_sample;
+				max_neighbor_depth = current_neighbor_sample.z;
+				max_neighbor_velocity = current_neighbor_sample.xy;
 			}
 		}
 	}
 
-	imageStore(neighbor_max, uvi, vec4(best_sample_uv, 0, 1));
+	imageStore(neighbor_max, uvi, vec4(max_neighbor_velocity, 0, 1));
 }
