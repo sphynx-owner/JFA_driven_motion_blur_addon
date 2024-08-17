@@ -132,11 +132,11 @@ void main()
 
 	float depth = textureLod(depth_sampler, uvn, 0.0).x;
 
-	vec4 view_position = scene_data.inv_projection_matrix * vec4(uvn * 2.0 - 1.0, depth, 1.0);
+	vec4 view_position = inverse(scene_data.projection_matrix) * vec4(uvn * 2.0 - 1.0, depth, 1.0);
 
 	view_position.xyz /= view_position.w;
 	// get full change 
-	vec4 world_local_position = mat4(scene_data.inv_view_matrix) * vec4(view_position.xyz, 1.0);
+	vec4 world_local_position = inverse(scene_data.view_matrix) * vec4(view_position.xyz, 1.0);
 
 	vec4 view_past_position = mat4(previous_scene_data.view_matrix) * vec4(world_local_position.xyz, 1.0);
 	
@@ -151,7 +151,7 @@ void main()
 	vec3 camera_uv_change = past_uv - vec3(uvn, depth);
 
 	// get just rotation change
-	world_local_position = mat4(mat3(scene_data.inv_view_matrix)) * vec4(view_position.xyz, 1.0);
+	world_local_position = mat4(mat3(inverse(scene_data.view_matrix))) * vec4(view_position.xyz, 1.0);
 
 	view_past_position = mat4(mat3(previous_scene_data.view_matrix)) * vec4(world_local_position.xyz, 1.0);
 	
