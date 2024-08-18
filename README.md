@@ -4,9 +4,9 @@
 3. to that, add a new PreBlurProcessor effect, which is now required, and after it add a new GuertinMotionBlur, SphynxSimpleJumpFloodMotionBlur, or ExperimentalJumpFloodMotionBlur
 4. for debugging, add a "C","Z", and "freeze" input events, and then a DebugCompositorEffect to the compositor effects. Then, all you have to do is toggle "Debug" to true on whichever effect you want to show debug for
 
-GuretinMotionBlur - An all around best blur effect, robust, performant, and now also realistic.
-SphynxSimpleJumpFloodMotionBlur - An effect driven by a novel dilation method using the jump flood algorithm, used in research of realistic blending schemes and focused on being a retrospective blur approach.
-ExperimentalJumpFloodMotionBlur - An effect driven by a novel dilation method using the jump flood algorithm, uses an added feature to heuristically fake transparency of leading edge of the blur using the past color output.
+* GuretinMotionBlur - An all around best blur effect, robust, performant, and now also realistic.
+* SphynxSimpleJumpFloodMotionBlur - An effect driven by a novel dilation method using the jump flood algorithm, used in research of realistic blending schemes and focused on being a retrospective blur approach.
+* ExperimentalJumpFloodMotionBlur - An effect driven by a novel dilation method using the jump flood algorithm, uses an added feature to heuristically fake transparency of leading edge of the blur using the past color output.
 
 instructions for radial blur meshes can be seen here:
 https://youtu.be/eslsw9do4Kc
