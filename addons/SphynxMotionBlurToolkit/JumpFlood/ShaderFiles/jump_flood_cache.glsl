@@ -10,11 +10,12 @@ layout(rgba16f, set = 0, binding = 3) uniform image2D past_color;
 // ----------------------------------------------------------
 float z_compare(float a, float b, float sze)
 {
-	return clamp(1. - sze * (a - b) / min(a, b), 0, 1);
+	return clamp(1. - sze * (a - b), 0, 1);
 }
 // ----------------------------------------------------------
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
 void main() 
 {
 	ivec2 render_size = ivec2(textureSize(velocity_sampler, 0));
@@ -34,11 +35,11 @@ void main()
 
 	vec4 past_col_x = textureLod(color_sampler, x, 0.0);
 
-	float alpha = 1 - z_compare(past_vx_vx.w, past_vx.w, 15);
+	float alpha = 1 - z_compare(-past_vx.w, -past_vx_vx.w, 20000);
 
 	vec4 final_past_col = mix(past_col_vx, past_col_x, alpha); 
 	
-	vec4 final_past_vx = mix(past_vx_vx, past_vx, alpha);
+	vec4 final_past_vx = mix(vec4(past_vx_vx.xyz, past_vx.w), past_vx, alpha);
 
 	imageStore(past_color, uv, final_past_col);
 	imageStore(past_velocity, uv, final_past_vx);

@@ -141,7 +141,7 @@ void main()
 		return;
 	}
 
-	float velocity_match = pow(clamp(dot(vx, vn) / dot(vn, vn), 0, 1), 0.25);
+	float velocity_match = pow(clamp(dot(vx, vn) / dot(vn, vn), 0, 1), 0.5);
 
 	vn = mix(vn, vx, velocity_match);
 

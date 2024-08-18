@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dc6r26wwdjceq"
+path="res://.godot/imported/jump_flood_mcguire_blur.glsl-db182d03471f2a14ff66b8fcdafe8dc6.res"
+
+[deps]
+
+source_file="res://addons/SphynxMotionBlurToolkit/JumpFlood/ShaderFiles/Archive/jump_flood_mcguire_blur.glsl"
+dest_files=["res://.godot/imported/jump_flood_mcguire_blur.glsl-db182d03471f2a14ff66b8fcdafe8dc6.res"]
+
+[params]
+

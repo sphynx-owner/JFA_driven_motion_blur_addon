@@ -92,10 +92,8 @@ void main()
 	}
 
 	vec2 x = (vec2(uvi) + vec2(0.5)) / vec2(render_size);
-	
-	float j = interleaved_gradient_noise(uvi) * 2. - 1.;
 
-	vec4 vnzw =  textureLod(neighbor_max,  x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1);
+	vec4 vnzw =  textureLod(neighbor_max, x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1);
 
 	vec2 vn = vnzw.xy;
 
@@ -124,37 +122,36 @@ void main()
 	float vx_length = max(0.5, length(vx));
 
 	vec2 wx = safenorm(vx);
-
-	vec2 wp = vec2(-wn.y, wn.x);
-
-	if(dot(wp, vx) < 0)
-	{
-		wp = -wp;
-	}
-
-	vec2 wc = safenorm(mix(wp, wx, clamp((vx_length - 0.5) / params.minimum_user_threshold, 0, 1)));
+	
+	float j = interleaved_gradient_noise(uvi) * 2. - 1.;
 
 	float zx = vxzw.w;
-	
-	float total_weight = params.sample_count / (params.importance_bias * vx_length);
 
-	vec4 sum = base_color * total_weight;
+	float weight = 1e-6;
+
+	vec4 sum = base_color * weight;
+
+	float nai_weight = 1e-6;
+
+	vec4 nai_sum = base_color * nai_weight;
 
 	for(int i = 0; i < params.sample_count; i++)
 	{
 		float t = mix(-1.0, 1.0, (i + j * params.maximum_jitter_value + 1.0) / (params.sample_count + 1.0));
 		
-		vec2 d = ((i % 2) > 0) ? vx : vn;
+		bool use_vn = ((i % 2) == 0);
 
-		float dz = ((i % 2) > 0) ? vxzw.z : vnzw.z;
+		vec2 d = use_vn ? vn : vx;
 
-		vec2 wd = safenorm(d);
+		float dz = use_vn ? vnzw.z : vxzw.z;
+
+		vec2 wd = use_vn ? wn : wx;
 
 		float T = abs(t * vn_length);
 
 		vec2 y = x + t * d / render_size;
 
-		float wa = dot(wc, wd);
+		float wa = abs(dot(wx, wd));
 		
 		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1);
 		
@@ -168,18 +165,30 @@ void main()
 		float b = z_compare(-zx, -zy, 20000);
 
 		float wb = abs(dot(vy / vy_length, wd));
+		
+		if(use_vn)
+		{
+			float ay = f * step(T, vy_length * wb);
 
-		float weight = 0.0;
-		weight += f * cone(T, vy_length) * wb;
-		weight += b * cone(T, vx_length) * wa;
-		weight += cylinder(T, min(vy_length, vx_length)) * 2. * max(wa, wb);
+			weight += ay; 
 
-		total_weight += weight;
+			sum += textureLod(color_sampler, y, 0.0) * ay;
+		}
 
-		sum += weight * textureLod(color_sampler, y, 0.0);
+		float nai_ay = b * step(T, vx_length * wa);
+
+		nai_weight += nai_ay;
+
+		nai_sum += textureLod(color_sampler, y, 0.0) * nai_ay;
 	}
 
-	sum /= total_weight;
+	sum /= weight;
+
+	weight /= params.sample_count / 2;
+
+	nai_sum /= nai_weight;
+
+	sum = mix(nai_sum, sum, weight);
 
 	imageStore(output_color, uvi, sum);
 #ifdef DEBUG

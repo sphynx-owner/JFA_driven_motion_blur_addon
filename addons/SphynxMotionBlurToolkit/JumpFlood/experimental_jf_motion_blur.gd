@@ -181,8 +181,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		dispatch_stage(tile_max_x_stage, 
 		[
 			get_sampler_uniform(custom_velocity_image, 0, false),
-			get_sampler_uniform(depth_image, 1, false),
-			get_image_uniform(tile_max_x_image, 2)
+			get_image_uniform(tile_max_x_image, 1)
 		],
 		tile_max_x_push_constants_byte_array,
 		Vector3i(x_groups, y_groups, 1), 
@@ -210,8 +209,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				16
 			]
 			
-			var step_size : float = round(pow(2 + step_exponent_modifier, last_iteration_index - i));
-			
 			var jf_float_push_constants_test : PackedFloat32Array = [
 				perpen_error_threshold,
 				sample_step_multiplier,
@@ -221,12 +218,11 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				0,
 				0,
 				step_exponent_modifier,
-				step_size,
+				0,
 				max_dilation_radius,
 				0,
 				0
 			]
-			
 			var jf_byte_array = jf_push_constants.to_byte_array()
 			jf_byte_array.append_array(jf_float_push_constants_test.to_byte_array())
 			
@@ -236,7 +232,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				get_image_uniform(buffer_a_image, 1),
 				get_image_uniform(buffer_b_image, 2),
 				get_sampler_uniform(buffer_a_image, 3, false),
-				get_sampler_uniform(buffer_b_image, 4, false)
+				get_sampler_uniform(buffer_b_image, 4, false),
 			],
 			jf_byte_array,
 			Vector3i(x_groups, y_groups, 1), 

@@ -10,8 +10,6 @@ layout(set = 0, binding = 2) uniform sampler2D velocity_sampler;
 layout(set = 0, binding = 3) uniform sampler2D velocity_map;
 layout(rgba16f, set = 0, binding = 4) uniform writeonly image2D output_image;
 layout(set = 0, binding = 5) uniform sampler2D tile_max;
-layout(set = 0, binding = 6) uniform sampler2D past_color_sampler;
-layout(set = 0, binding = 7) uniform sampler2D past_velocity_sampler;
 
 layout(push_constant, std430) uniform Params 
 {
@@ -112,12 +110,14 @@ void main()
 	vec2 vn = vnz.xy;
 	
 	vec4 col_x = textureLod(color_sampler, x, 0.0);
+		
+	vec2 wn = safenorm(vn);
 
 	vec4 vxz = textureLod(velocity_sampler, x, 0.0) * vec4(render_size, 1, 1);
 	
 	float vx_length = max(0.5, length(vxz.xy));
 	
-	//multiplier = clamp(vx_length, 0, min(params.max_dilation_radius, vn_length * params.motion_blur_intensity)) / max(FLT_MIN, vx_length);
+	multiplier = clamp(vx_length, 0, min(params.max_dilation_radius, vn_length * params.motion_blur_intensity)) / max(FLT_MIN, vx_length);
 	
 	vxz.xyz *= multiplier;
 
@@ -125,8 +125,6 @@ void main()
 	
 	vec2 vx = vxz.xy;
 	
-	vec2 wx = safenorm(vx);
-
 	if(vn_length <= 0.5)
 	{
 		imageStore(output_image, uvi, col_x);
@@ -142,56 +140,31 @@ void main()
 		return;
 	}
 
-	vec3 wvnz = normalize(vnz.xyz);
-
-	float velocity_match = pow(clamp(dot(vx, vn) / dot(vn, vn), 0, 1), 1 / (10000 * pow(abs(vnz.z), 2)));
+	float velocity_match = pow(clamp(dot(vx, vn) / dot(vn, vn), 0, 1), 1 / (1000 * abs(vnz.z)));
 
 	vn = mix(vn, vx, velocity_match);
 
 	vnz = mix(vnz, vxz.xyz, velocity_match);
 	
-	vec2 wn = safenorm(vn);
-
 	float zx = vxz.w;
 	
 	float j = interleaved_gradient_noise(uvi) - 0.5;
 
-	vec4 past_vxz = textureLod(past_velocity_sampler, x, 0.0) * vec4(render_size * multiplier, 1 * multiplier, 1);
-
-	vec2 past_vx = past_vxz.xy;
-
-	vec4 past_col_x = textureLod(past_color_sampler, x, 0.0);
-
+	vec2 nai_y;
 	float t;
-	float back_t;
 	float T;
 	vec2 y;
-	float y_inside;
 	vec4 nai_vy;
-	vec2 nai_y;
-	vec2 nai_back_y;
 	float nai_zy;
 	float nai_b;
 	float nai_ay;
-	float nai_y_inside;
 	vec4 vy;
 	float vy_length;
 	float zy;
 	float f;
 	float wa;
 	float ay_trail;
-	float past_t;
-	vec2 past_y;
-	vec2 past_back_y;
-	float past_ay;
-	float alpha;
-	vec4 past_vy;
-	float past_zy;
-	float past_b;
-	float past_y_inside;
-	float nai_T;
-	float nai_vy_length;
-	float nai_wa;
+	float y_inside;
 
 	float weight = 1e-5;
 
@@ -199,79 +172,33 @@ void main()
 
 	float nai_weight = 1e-5;
 
-	float nai_sub_weight = 1e-5;
+	vec4 nai_sum = col_x * weight;
 
-	vec4 nai_sum = col_x * nai_sub_weight;
-
-	float past_weight = 1e-5;
-
-	float past_sub_weight = 1e-5;
-
-	vec4 past_sum = past_col_x * past_sub_weight;
-
-	float final_sample_count = params.motion_blur_samples + 1e-5;
+	float final_sample_count = params.motion_blur_samples;
 
 	for(int i = 0; i < params.motion_blur_samples; i++)
 	{
 		t = mix(0., -1., (i + j + 1.0) / (params.motion_blur_samples + 1.0));
 
-		back_t = mix(1, 0, (i + j + 1.0) / (params.motion_blur_samples + 1.0));
-
+		nai_y = x + (vx / render_size) * t;
+		
 		T = abs(t * vn_length);
 
 		y = x + (vn / render_size) * t;
+
+		nai_vy = textureLod(velocity_sampler, nai_y, 0.0) * vec4(render_size, 1, 1);
 		
-		nai_T = abs(t * vx_length);
-
-		nai_y = x + (vx / render_size) * t;
-
-		nai_back_y = x + (vx / render_size) * back_t;
-
-		nai_vy = textureLod(velocity_sampler, nai_y, 0.0) * vec4(render_size * multiplier, 1 * multiplier, 1);
-		
-		nai_vy_length = max(0.5, length(nai_vy.xy));
-
 		nai_zy = nai_vy.w - vxz.z * t;
 		
 		nai_b = z_compare(-zx, -nai_zy, 20000);
-
-		float nai_f = z_compare(-nai_zy, -zx, 20000);
 		
-		nai_wa = abs(max(0, dot(nai_vy.xy / vy_length, wx)));
+		nai_ay = nai_b;
 		
-		nai_ay = max(nai_b, 0);//step(nai_T, nai_vy_length * nai_wa));
-
 		nai_weight += 1;
 
-		nai_sub_weight += 1;
+		nai_sum += mix(col_x, textureLod(color_sampler, nai_y, 0.0), nai_ay);
 
-		nai_y_inside = step(0, nai_y.x) * step(nai_y.x, 1) * step(0, nai_y.y) * step(nai_y.y, 1);
-
-		nai_sum += mix(textureLod(color_sampler, nai_back_y, 0.0), textureLod(color_sampler, nai_y, 0.0), nai_ay * nai_y_inside);
-		
-		past_y = x + (past_vx / render_size) * t;
-
-		past_back_y = x + (past_vx / render_size) * back_t;
-
-		alpha = z_compare(-past_vxz.w, -vxz.w, 20000);
-
-		past_vy = textureLod(past_velocity_sampler, past_y, 0.0) * vec4(render_size * multiplier, 1 * multiplier, 1);
-
-		past_zy = past_vy.w - past_vxz.z * t;
-
-		past_b = z_compare(-past_vxz.w, -past_zy, 20000);
-
-		past_ay = (1 - step(nai_T, nai_vy_length * nai_wa)) * (1 - alpha);
-
-		past_weight += past_ay;
-
-		past_sub_weight += 1;
-
-		past_y_inside = step(0, past_y.x) * step(past_y.x, 1) * step(0, past_y.y) * step(past_y.y, 1);
-
-		past_sum += mix(textureLod(past_color_sampler, past_back_y, 0.0), textureLod(past_color_sampler, past_y, 0.0), past_b * past_y_inside);
-
-		vy = textureLod(velocity_sampler, y, 0.0) * vec4(render_size * multiplier, 1 * multiplier, 1);
+		vy = textureLod(velocity_sampler, y, 0.0) * vec4(render_size, 1, 1);
 
 		vy_length = max(0.5, length(vy.xy));
 
@@ -282,7 +209,7 @@ void main()
 		wa = abs(max(0, dot(vy.xy / vy_length, wn)));
 
 		ay_trail = f * step(T, vy_length * wa);
-
+		
 		y_inside = step(0, y.x) * step(y.x, 1) * step(0, y.y) * step(y.y, 1);
 
 		weight += ay_trail * y_inside;
@@ -294,16 +221,12 @@ void main()
 
 	weight /= final_sample_count;
 
-	nai_sum /= nai_sub_weight;
+	nai_sum /= nai_weight;
 
 	nai_weight /= final_sample_count;
-
-	past_sum /= past_sub_weight;
-
-	past_weight /= final_sample_count;
 	
-	sum = mix(mix(nai_sum, past_sum, past_weight), sum, weight);
-	
+	sum = mix(nai_sum, sum, weight);
+
 	imageStore(output_image, uvi, sum);
 	
 #ifdef DEBUG

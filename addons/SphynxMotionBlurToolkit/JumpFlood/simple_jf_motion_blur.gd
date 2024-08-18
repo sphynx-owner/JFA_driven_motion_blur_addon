@@ -193,8 +193,6 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				16
 			]
 			
-			var step_size : float = round(pow(2 + step_exponent_modifier, last_iteration_index - i));
-			
 			var jf_float_push_constants_test : PackedFloat32Array = [
 				perpen_error_threshold,
 				sample_step_multiplier,
@@ -204,12 +202,11 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 				0,
 				0,
 				step_exponent_modifier,
-				step_size,
+				0,
 				max_dilation_radius,
 				0,
 				0
 			]
-			
 			var jf_byte_array = jf_push_constants.to_byte_array()
 			jf_byte_array.append_array(jf_float_push_constants_test.to_byte_array())
 			

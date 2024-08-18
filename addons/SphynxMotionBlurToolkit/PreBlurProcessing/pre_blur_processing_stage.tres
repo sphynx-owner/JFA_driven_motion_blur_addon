@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://c8ulad7utgrg7"]
 
 [ext_resource type="Script" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_8hijg"]
-[ext_resource type="RDShaderFile" uid="uid://ojudxyx6f4rx" path="res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/pre_blur_processor.glsl" id="2_w54vd"]
+[ext_resource type="RDShaderFile" uid="uid://ojudxyx6f4rx" path="res://addons/SphynxMotionBlurToolkit/PreBlurProcessing/Shaders/pre_blur_processor.glsl" id="2_w54vd"]
 
 [resource]
 script = ExtResource("1_8hijg")
