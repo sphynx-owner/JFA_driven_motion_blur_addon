@@ -17,7 +17,7 @@ layout(push_constant, std430) uniform Params
 	float minimum_user_threshold;
 	float importance_bias;
 	float maximum_jitter_value;
-	float nan8;
+	float motion_blur_intensity;
 	int tile_size;
 	int sample_count;
 	int frame;
@@ -93,7 +93,7 @@ void main()
 
 	vec2 x = (vec2(uvi) + vec2(0.5)) / vec2(render_size);
 
-	vec4 vnzw =  textureLod(neighbor_max, x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1);
+	vec4 vnzw =  textureLod(neighbor_max, x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
 
 	vec2 vn = vnzw.xy;
 
@@ -115,7 +115,7 @@ void main()
 
 	vec2 wn = safenorm(vn);
 
-	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1);
+	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
 
 	vec2 vx = vxzw.xy;
 
@@ -153,7 +153,7 @@ void main()
 
 		float wa = abs(dot(wx, wd));
 		
-		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1);
+		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1) * params.motion_blur_intensity;
 		
 		vec2 vy = vyzw.xy - dz * t; 
 	
@@ -175,7 +175,7 @@ void main()
 			sum += textureLod(color_sampler, y, 0.0) * ay;
 		}
 
-		float nai_ay = b * step(T, vx_length * wa);
+		float nai_ay = b * step(T, vx_length * wa) * 2;
 
 		nai_weight += nai_ay;
 

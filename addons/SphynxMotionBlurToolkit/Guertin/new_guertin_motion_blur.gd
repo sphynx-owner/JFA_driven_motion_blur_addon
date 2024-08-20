@@ -129,7 +129,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		minimum_user_threshold, 
 		importance_bias,
 		maximum_jitter_value, 
-		0,
+		intensity,
 	]
 	var int_blur_push_constants : PackedInt32Array = [
 		tile_size,

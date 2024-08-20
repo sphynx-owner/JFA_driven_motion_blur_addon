@@ -17,7 +17,7 @@ layout(push_constant, std430) uniform Params
 	float minimum_user_threshold;
 	float importance_bias;
 	float maximum_jitter_value;
-	float nan8;
+	float motion_blur_intensity;
 	int tile_size;
 	int sample_count;
 	int frame;
@@ -95,7 +95,7 @@ void main()
 	
 	float j = interleaved_gradient_noise(uvi) * 2. - 1.;
 
-	vec4 vnzw =  textureLod(neighbor_max,  x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1);
+	vec4 vnzw =  textureLod(neighbor_max,  x + vec2(params.tile_size / 2) / vec2(render_size) + jitter_tile(uvi), 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
 
 	vec2 vn = vnzw.xy;
 
@@ -117,7 +117,7 @@ void main()
 
 	vec2 wn = safenorm(vn);
 
-	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1);
+	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
 
 	vec2 vx = vxzw.xy;
 
@@ -156,7 +156,7 @@ void main()
 
 		float wa = dot(wc, wd);
 		
-		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1);
+		vec4 vyzw = textureLod(velocity_sampler, y, 0.0) * vec4(render_size / 2, 1, 1) * params.motion_blur_intensity;
 		
 		vec2 vy = vyzw.xy - dz * t; 
 	
