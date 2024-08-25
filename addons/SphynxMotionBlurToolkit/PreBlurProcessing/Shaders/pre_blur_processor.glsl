@@ -91,7 +91,7 @@ layout(push_constant, std430) uniform Params
 {
 	float rotation_velocity_multiplier;
 	float movement_velocity_multiplier;
-	float object_velocity_multilpier;
+	float object_velocity_multiplier;
 	float rotation_velocity_lower_threshold;
 	float movement_velocity_lower_threshold;
 	float object_velocity_lower_threshold;
@@ -99,7 +99,7 @@ layout(push_constant, std430) uniform Params
 	float movement_velocity_upper_threshold;
 	float object_velocity_upper_threshold;
 	float is_fsr2;
-	float nan_fl_1;
+	float motion_blur_intensity;
 	float nan_fl_2;
 } params;
 
@@ -174,9 +174,9 @@ void main()
 	// get object velocity
 	vec3 object_uv_change = base_velocity - camera_uv_change.xyz;
 	// construct final velocity with user defined weights
-	vec3 total_velocity = camera_rotation_uv_change * params.rotation_velocity_multiplier * sharp_step(params.rotation_velocity_lower_threshold, params.rotation_velocity_upper_threshold, length(camera_rotation_uv_change))
-	+ camera_movement_uv_change * params.movement_velocity_multiplier * sharp_step(params.movement_velocity_lower_threshold, params.movement_velocity_upper_threshold, length(camera_movement_uv_change))
-	+ object_uv_change * params.object_velocity_multilpier * sharp_step(params.object_velocity_lower_threshold, params.object_velocity_upper_threshold, length(object_uv_change));
+	vec3 total_velocity = camera_rotation_uv_change * params.rotation_velocity_multiplier * sharp_step(params.rotation_velocity_lower_threshold, params.rotation_velocity_upper_threshold, length(camera_rotation_uv_change) * params.rotation_velocity_multiplier * params.motion_blur_intensity)
+	+ camera_movement_uv_change * params.movement_velocity_multiplier * sharp_step(params.movement_velocity_lower_threshold, params.movement_velocity_upper_threshold, length(camera_movement_uv_change) * params.movement_velocity_multiplier * params.motion_blur_intensity)
+	+ object_uv_change * params.object_velocity_multiplier * sharp_step(params.object_velocity_lower_threshold, params.object_velocity_upper_threshold, length(object_uv_change) * params.object_velocity_multiplier * params.motion_blur_intensity);
 	// if objects move, clear z direction, (z only correct for static environment)
 	if(dot(object_uv_change.xy, object_uv_change.xy) > 0.000001)
 	{

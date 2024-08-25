@@ -1,4 +1,4 @@
-extends "res://addons/SphynxMotionBlurToolkit/BaseClasses/enhanced_compositor_effect.gd"
+extends "res://addons/SphynxMotionBlurToolkit/BaseClasses/mb_compositor_effect.gd"
 class_name PreBlurProcessor
 
 @export_group("Shader Stages")
@@ -15,12 +15,27 @@ class_name PreBlurProcessor
 
 var custom_velocity : StringName = "custom_velocity"
 
-func _init():
-	needs_motion_vectors = true
-	set_deferred("context", "MotionBlur")
-	super()
+var temp_intensity : float
+
+var previous_time : float = 0
 
 func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSceneBuffersRD, render_scene_data : RenderSceneDataRD):
+	var time : float = float(Time.get_ticks_msec()) / 1000
+	
+	var delta_time : float = time - previous_time
+	
+	previous_time = time
+	
+	temp_intensity = intensity
+	
+	if framerate_independent:
+		var capped_frame_time : float = 1 / target_constant_framerate
+		
+		if !uncapped_independence:
+			capped_frame_time = min(capped_frame_time, delta_time)
+		
+		temp_intensity = intensity * capped_frame_time / delta_time
+	
 	ensure_texture(custom_velocity, render_scene_buffers)
 	
 	rd.draw_command_begin_label("Pre Blur Processing", Color(1.0, 1.0, 1.0, 1.0))
@@ -36,7 +51,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		camera_movement_component.upper_threshold,
 		object_movement_component.upper_threshold,
 		1 if true else 0,
-		0,
+		temp_intensity,
 		0,
 	]
 	

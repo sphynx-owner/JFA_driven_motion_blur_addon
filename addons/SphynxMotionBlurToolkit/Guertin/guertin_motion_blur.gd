@@ -52,9 +52,6 @@ var custom_velocity : StringName = "custom_velocity"
 
 var freeze : bool = false
 
-func _get_max_dilation_range() -> float:
-	return tile_size;
-
 var temp_intensity : float
 
 var previous_time : float = 0
