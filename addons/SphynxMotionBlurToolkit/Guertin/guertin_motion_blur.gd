@@ -55,7 +55,27 @@ var freeze : bool = false
 func _get_max_dilation_range() -> float:
 	return tile_size;
 
+var temp_intensity : float
+
+var previous_time : float = 0
+
 func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSceneBuffersRD, render_scene_data : RenderSceneDataRD):
+	var time : float = float(Time.get_ticks_msec()) / 1000
+	
+	var delta_time : float = time - previous_time
+	
+	previous_time = time
+	
+	temp_intensity = intensity
+	
+	if framerate_independent:
+		var capped_frame_time : float = 1 / target_constant_framerate
+		
+		if !uncapped_independence:
+			capped_frame_time = min(capped_frame_time, delta_time)
+		
+		temp_intensity = intensity * capped_frame_time / delta_time
+	
 	ensure_texture(tile_max_x, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / tile_size, 1.))
 	ensure_texture(tile_max, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / tile_size, 1. / tile_size))
 	ensure_texture(neighbor_max, render_scene_buffers, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, Vector2(1. / tile_size, 1. / tile_size))
@@ -129,7 +149,7 @@ func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSce
 		minimum_user_threshold, 
 		importance_bias,
 		maximum_jitter_value, 
-		intensity,
+		temp_intensity,
 	]
 	var int_blur_push_constants : PackedInt32Array = [
 		tile_size,

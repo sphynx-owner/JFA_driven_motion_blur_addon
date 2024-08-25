@@ -101,21 +101,21 @@ void main()
 
 	vec4 base_color = textureLod(color_sampler, x, 0.0);
 
+	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
+
 	if(vn_length < 0.5)
 	{
 		imageStore(output_color, uvi, base_color);
 #ifdef DEBUG
 		imageStore(debug_1_image, uvi, base_color);
 		imageStore(debug_2_image, uvi, vec4(vn / render_size * 2, 0, 1));
-		imageStore(debug_3_image, uvi, vec4(0));
+		imageStore(debug_3_image, uvi, vec4(vxzw.xy / render_size * 2, 0, 1));
 		imageStore(debug_4_image, uvi, vec4(0));
 #endif
 		return;
 	}
 
 	vec2 wn = safenorm(vn);
-
-	vec4 vxzw = textureLod(velocity_sampler, x, 0.0) * vec4(render_size / 2., 1, 1) * params.motion_blur_intensity;
 
 	vec2 vx = vxzw.xy;
 
@@ -192,9 +192,9 @@ void main()
 
 	imageStore(output_color, uvi, sum);
 #ifdef DEBUG
-	imageStore(debug_1_image, uvi, sum);
+	imageStore(debug_1_image, uvi, base_color);
 	imageStore(debug_2_image, uvi, vec4(vn / render_size * 2, 0, 1));
-	imageStore(debug_3_image, uvi, vnzw);
+	imageStore(debug_3_image, uvi, vec4(vx / render_size * 2, 0, 1));
 	imageStore(debug_4_image, uvi, vxzw);
 #endif
 }
