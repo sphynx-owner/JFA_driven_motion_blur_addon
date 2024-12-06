@@ -186,7 +186,7 @@ func ensure_texture(texture_name: StringName, render_scene_buffers: RenderSceneB
 
 	if !render_scene_buffers.has_texture(context, texture_name):
 		var usage_bits: int = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
-		render_scene_buffers.create_texture(context, texture_name, texture_format, usage_bits, RenderingDevice.TEXTURE_SAMPLES_1, render_size, 1, 1, true)
+		render_scene_buffers.create_texture(context, texture_name, texture_format, usage_bits, RenderingDevice.TEXTURE_SAMPLES_1, render_size, 1, 1, true, false)
 
 func get_image_uniform(image: RID, binding: int) -> RDUniform:
 	var uniform: RDUniform = RDUniform.new()
