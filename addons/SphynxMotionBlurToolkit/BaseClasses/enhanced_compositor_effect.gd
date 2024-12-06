@@ -4,31 +4,31 @@ var rd: RenderingDevice
 
 var linear_sampler: RID
 
-var nearest_sampler : RID
+var nearest_sampler: RID
 
 var context: StringName = "PostProcess"
 
-var all_shader_stages : Dictionary
+var all_shader_stages: Dictionary
 
-@export var debug : bool = false:
+@export var debug: bool = false:
 	set(value):
-		if(debug == value):
+		if (debug == value):
 			return
 		
 		debug = value
 		free_shaders.call_deferred()
 		generate_shaders.call_deferred()
 
-var debug_1 : String = "debug_1"
-var debug_2 : String = "debug_2"
-var debug_3 : String = "debug_3"
-var debug_4 : String = "debug_4"
-var debug_5 : String = "debug_5"
-var debug_6 : String = "debug_6"
-var debug_7 : String = "debug_7"
-var debug_8 : String = "debug_8"
+var debug_1: String = "debug_1"
+var debug_2: String = "debug_2"
+var debug_3: String = "debug_3"
+var debug_4: String = "debug_4"
+var debug_5: String = "debug_5"
+var debug_6: String = "debug_6"
+var debug_7: String = "debug_7"
+var debug_8: String = "debug_8"
 
-var all_debug_images : Array[RID]
+var all_debug_images: Array[RID]
 
 func _init():
 	RenderingServer.call_on_render_thread(_initialize_compute)
@@ -59,7 +59,7 @@ func generate_shaders():
 		generate_shader_stage(shader_stage)
 
 
-func subscirbe_shader_stage(shader_stage : ShaderStageResource):
+func subscirbe_shader_stage(shader_stage: ShaderStageResource):
 	if all_shader_stages.has(shader_stage):
 		return
 	
@@ -68,7 +68,7 @@ func subscirbe_shader_stage(shader_stage : ShaderStageResource):
 	if rd:
 		generate_shader_stage(shader_stage)
 
-func unsubscribe_shader_stage(shader_stage : ShaderStageResource):
+func unsubscribe_shader_stage(shader_stage: ShaderStageResource):
 	if all_shader_stages.has(shader_stage):
 		all_shader_stages.erase(shader_stage)
 		if !rd:
@@ -104,13 +104,13 @@ func _initialize_compute():
 	generate_shaders()
 
 
-func generate_shader_stage(shader_stage : ShaderStageResource):
-	var shader_spirv : RDShaderSPIRV
+func generate_shader_stage(shader_stage: ShaderStageResource):
+	var shader_spirv: RDShaderSPIRV
 	if debug:
 		var file = FileAccess.open(shader_stage.shader_file.resource_path, FileAccess.READ)
-		var split_shader : PackedStringArray = file.get_as_text().split("#[compute]", true, 1)
-		var content : String = split_shader[min(1, split_shader.size() - 1)]
-		var all_split_parts : PackedStringArray = content.split("#version 450", true, 1)
+		var split_shader: PackedStringArray = file.get_as_text().split("#[compute]", true, 1)
+		var content: String = split_shader[min(1, split_shader.size() - 1)]
+		var all_split_parts: PackedStringArray = content.split("#version 450", true, 1)
 		content = str(all_split_parts[0],
 		"#version 450
 #define DEBUG
@@ -123,7 +123,7 @@ layout(rgba16f, set = 0, binding = 15) uniform image2D debug_6_image;
 layout(rgba16f, set = 0, binding = 16) uniform image2D debug_7_image;
 layout(rgba16f, set = 0, binding = 17) uniform image2D debug_8_image;",
 		all_split_parts[1])
-		var shader_source : RDShaderSource = RDShaderSource.new()
+		var shader_source: RDShaderSource = RDShaderSource.new()
 		shader_source.set_stage_source(RenderingDevice.SHADER_STAGE_COMPUTE, content)
 		shader_spirv = rd.shader_compile_spirv_from_source(shader_source, false)
 		print(content)
@@ -173,11 +173,11 @@ func _render_callback(p_effect_callback_type, p_render_data):
 	
 	all_debug_images.clear()
 
-func _render_callback_2(render_size : Vector2i, render_scene_buffers : RenderSceneBuffersRD, render_scene_data : RenderSceneDataRD):
+func _render_callback_2(render_size: Vector2i, render_scene_buffers: RenderSceneBuffersRD, render_scene_data: RenderSceneDataRD):
 	pass
 
-func ensure_texture(texture_name : StringName, render_scene_buffers : RenderSceneBuffersRD, texture_format : RenderingDevice.DataFormat = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, render_size_multiplier : Vector2 = Vector2(1, 1)):
-	var render_size : Vector2i = Vector2(render_scene_buffers.get_internal_size()) * render_size_multiplier
+func ensure_texture(texture_name: StringName, render_scene_buffers: RenderSceneBuffersRD, texture_format: RenderingDevice.DataFormat = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT, render_size_multiplier: Vector2 = Vector2(1, 1)):
+	var render_size: Vector2i = Vector2(render_scene_buffers.get_internal_size()) * render_size_multiplier
 	
 	if render_scene_buffers.has_texture(context, texture_name):
 		var tf: RDTextureFormat = render_scene_buffers.get_texture_format(context, texture_name)
@@ -195,7 +195,7 @@ func get_image_uniform(image: RID, binding: int) -> RDUniform:
 	uniform.add_id(image)
 	return uniform
 
-func get_sampler_uniform(image: RID, binding: int, linear : bool = true) -> RDUniform:
+func get_sampler_uniform(image: RID, binding: int, linear: bool = true) -> RDUniform:
 	var uniform: RDUniform = RDUniform.new()
 	uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE
 	uniform.binding = binding
@@ -203,7 +203,7 @@ func get_sampler_uniform(image: RID, binding: int, linear : bool = true) -> RDUn
 	uniform.add_id(image)
 	return uniform
 
-func dispatch_stage(stage : ShaderStageResource, uniforms : Array[RDUniform], push_constants : PackedByteArray, dispatch_size : Vector3i, label : String = "DefaultLabel", view : int = 0, color : Color = Color(1, 1, 1, 1)):
+func dispatch_stage(stage: ShaderStageResource, uniforms: Array[RDUniform], push_constants: PackedByteArray, dispatch_size: Vector3i, label: String = "DefaultLabel", view: int = 0, color: Color = Color(1, 1, 1, 1)):
 	rd.draw_command_begin_label(label + " " + str(view), color)
 	
 	if debug:
