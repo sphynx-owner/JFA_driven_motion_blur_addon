@@ -1,7 +1,5 @@
 # Instructions
 
-**For Godot 4.4 users:** I introduced a new Godot 4.4 branch with required fixes. Download from it instead.
-
 1. Take the contents of the "addons" folder and move them to an "addons" folder in your project.
 2. Add an environment node, then add a MotionBlurCompositor (NEW!!) to it.
 3. Add a new PreBlurProcessor effect, which is now required. After it, add a new GuertinMotionBlur, SphynxSimpleJumpFloodMotionBlur, or ExperimentalJumpFloodMotionBlur.
