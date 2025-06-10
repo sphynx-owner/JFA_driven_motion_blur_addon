@@ -9,63 +9,64 @@ layout(set = 0, binding = 1) uniform sampler2D vector_sampler;
 layout(rgba32f, set = 0, binding = 2) uniform writeonly image2D vector_output;
 
 struct SceneData {
-	highp mat4 projection_matrix;
-	highp mat4 inv_projection_matrix;
-	highp mat4 inv_view_matrix;
-	highp mat4 view_matrix;
+	mat4 projection_matrix;
+	mat4 inv_projection_matrix;
+	mat4 inv_view_matrix;
+	mat4 view_matrix;
 
 	// only used for multiview
-	highp mat4 projection_matrix_view[2];
-	highp mat4 inv_projection_matrix_view[2];
-	highp vec4 eye_offset[2];
+	mat4 projection_matrix_view[MAX_VIEWS];
+	mat4 inv_projection_matrix_view[MAX_VIEWS];
+	vec4 eye_offset[MAX_VIEWS];
 
 	// Used for billboards to cast correct shadows.
-	highp mat4 main_cam_inv_view_matrix;
+	mat4 main_cam_inv_view_matrix;
 
-	highp vec2 viewport_size;
-	highp vec2 screen_pixel_size;
+	vec2 viewport_size;
+	vec2 screen_pixel_size;
 
 	// Use vec4s because std140 doesn't play nice with vec2s, z and w are wasted.
-	highp vec4 directional_penumbra_shadow_kernel[32];
-	highp vec4 directional_soft_shadow_kernel[32];
-	highp vec4 penumbra_shadow_kernel[32];
-	highp vec4 soft_shadow_kernel[32];
+	vec4 directional_penumbra_shadow_kernel[32];
+	vec4 directional_soft_shadow_kernel[32];
+	vec4 penumbra_shadow_kernel[32];
+	vec4 soft_shadow_kernel[32];
 
-	mediump mat3 radiance_inverse_xform;
-
-	mediump vec4 ambient_light_color_energy;
-
-	mediump float ambient_color_sky_mix;
-	bool use_ambient_light;
-	bool use_ambient_cubemap;
-	bool use_reflection_cubemap;
-
-	highp vec2 shadow_atlas_pixel_size;
-	highp vec2 directional_shadow_pixel_size;
+	vec2 shadow_atlas_pixel_size;
+	vec2 directional_shadow_pixel_size;
 
 	uint directional_light_count;
-	mediump float dual_paraboloid_side;
-	highp float z_far;
-	highp float z_near;
+	float dual_paraboloid_side;
+	float z_far;
+	float z_near;
 
-	bool roughness_limiter_enabled;
-	mediump float roughness_limiter_amount;
-	mediump float roughness_limiter_limit;
-	mediump float opaque_prepass_threshold;
+	float roughness_limiter_amount;
+	float roughness_limiter_limit;
+	float opaque_prepass_threshold;
+	uint flags;
 
-	highp float pad;
+	mat3 radiance_inverse_xform;
 
-	mediump float fog_sun_scatter;
-	mediump float fog_aerial_perspective;
-	highp float time;
-	mediump float reflection_multiplier; // one normally, zero when rendering reflections
+	vec4 ambient_light_color_energy;
 
+	float ambient_color_sky_mix;
+	float fog_density;
+	float fog_height;
+	float fog_height_density;
+
+	float fog_depth_curve;
+	float fog_depth_begin;
+	float fog_depth_end;
+	float fog_sun_scatter;
+
+	vec3 fog_light_color;
+	float fog_aerial_perspective;
+
+	float time;
+	float taa_frame_count;
 	vec2 taa_jitter;
-	bool material_uv2_mode;
-	float emissive_exposure_normalization;
 
+	float emissive_exposure_normalization;
 	float IBL_exposure_normalization;
-	bool pancake_shadows;
 	uint camera_visible_layers;
 	float pass_alpha_multiplier;
 };
