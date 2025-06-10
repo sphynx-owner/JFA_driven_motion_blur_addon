@@ -53,18 +53,7 @@ struct SceneData {
 	mediump float roughness_limiter_limit;
 	mediump float opaque_prepass_threshold;
 
-	bool fog_enabled;
-	uint fog_mode;
-	highp float fog_density;
-	highp float fog_height;
-	highp float fog_height_density;
-
-	highp float fog_depth_curve;
 	highp float pad;
-	highp float fog_depth_begin;
-
-	mediump vec3 fog_light_color;
-	highp float fog_depth_end;
 
 	mediump float fog_sun_scatter;
 	mediump float fog_aerial_perspective;
