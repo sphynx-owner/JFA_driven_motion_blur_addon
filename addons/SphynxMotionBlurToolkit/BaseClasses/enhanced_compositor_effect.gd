@@ -210,6 +210,9 @@ func dispatch_stage(stage: ShaderStageResource, uniforms: Array[RDUniform], push
 		for i in 8:
 			var debug_image_index = i + view * 8;
 			uniforms.append(get_image_uniform(all_debug_images[debug_image_index], 10 + i))
+
+	if (!stage.shader.is_valid()):
+		subscirbe_shader_stage(stage)
 	
 	var tex_uniform_set = UniformSetCacheRD.get_cache(stage.shader, 0, uniforms)
 	
