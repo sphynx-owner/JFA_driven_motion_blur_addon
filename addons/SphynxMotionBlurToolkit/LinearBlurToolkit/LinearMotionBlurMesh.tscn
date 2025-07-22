@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://b8aytbebcsmv8"]
 
-[ext_resource type="Shader" uid="uid://dgf8dfuu6xtxl" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/LinearMotionBlurMesh.gdshader" id="1_m7mjv"]
-[ext_resource type="Script" uid="uid://bpwvp0aasuaut" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/linear_motion_blur_mesh.gd" id="2_glqur"]
+[ext_resource type="Shader" uid="uid://b0yo6ig2nsllq" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/LinearMotionBlurMesh.gdshader" id="1_m7mjv"]
+[ext_resource type="Script" uid="uid://bbm7uwucfi217" path="res://addons/SphynxMotionBlurToolkit/LinearBlurToolkit/linear_motion_blur_mesh.gd" id="2_glqur"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_lylv4"]
 
