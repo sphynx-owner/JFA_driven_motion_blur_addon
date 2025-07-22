@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ShaderStageResource" load_steps=3 format=3 uid="uid://dc5fr84ue3dn5"]
 
-[ext_resource type="Script" uid="uid://bre6lfu0dp38x" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_6wgo2"]
+[ext_resource type="Script" uid="uid://g8j232s5j3h6" path="res://addons/SphynxMotionBlurToolkit/BaseClasses/shader_pass_resource.gd" id="1_6wgo2"]
 [ext_resource type="RDShaderFile" uid="uid://dig08kpnfakuf" path="res://addons/SphynxMotionBlurToolkit/JumpFlood/ShaderFiles/jump_flood_overlay.glsl" id="2_ljukb"]
 
 [resource]
