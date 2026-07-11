@@ -11,8 +11,8 @@ layout(rgba32f, set = 0, binding = 2) uniform writeonly image2D vector_output;
 struct SceneData {
 	mat4 projection_matrix;
 	mat4 inv_projection_matrix;
-	mat4 inv_view_matrix;
-	mat4 view_matrix;
+	mat3x4 inv_view_matrix;
+	mat3x4 view_matrix;
 
 	// only used for multiview
 	mat4 projection_matrix_view[2];
@@ -33,6 +33,10 @@ struct SceneData {
 
 	vec2 shadow_atlas_pixel_size;
 	vec2 directional_shadow_pixel_size;
+
+	float radiance_pixel_size;
+	float radiance_border_size;
+	vec2 reflection_atlas_border_size;
 
 	uint directional_light_count;
 	float dual_paraboloid_side;
@@ -105,6 +109,16 @@ float get_view_depth(float depth)
 	return 0.;
 }
 
+mat4 unpack_transform(mat3x4 transform)
+{
+	return transpose(mat4(
+		transform[0],
+		transform[1],
+		transform[2],
+		vec4(0.0, 0.0, 0.0, 1.0)
+	));
+}
+
 void main() 
 {
 	ivec2 render_size = ivec2(textureSize(vector_sampler, 0));
@@ -119,6 +133,8 @@ void main()
 	SceneData scene_data = scene.data;
 	
 	SceneData previous_scene_data = scene.prev_data;
+	mat4 view_matrix = unpack_transform(scene_data.view_matrix);
+	mat4 previous_view_matrix = unpack_transform(previous_scene_data.view_matrix);
 
 	float depth = textureLod(depth_sampler, uvn, 0.0).x;
 
@@ -126,9 +142,9 @@ void main()
 
 	view_position.xyz /= view_position.w;
 	// get full change 
-	vec4 world_local_position = inverse(scene_data.view_matrix) * vec4(view_position.xyz, 1.0);
+	vec4 world_local_position = inverse(view_matrix) * vec4(view_position.xyz, 1.0);
 
-	vec4 view_past_position = mat4(previous_scene_data.view_matrix) * vec4(world_local_position.xyz, 1.0);
+	vec4 view_past_position = previous_view_matrix * vec4(world_local_position.xyz, 1.0);
 	
 	vec4 view_past_ndc = previous_scene_data.projection_matrix * view_past_position;
 
@@ -141,9 +157,9 @@ void main()
 	vec3 camera_uv_change = past_uv - vec3(uvn, depth);
 
 	// get just rotation change
-	world_local_position = mat4(mat3(inverse(scene_data.view_matrix))) * vec4(view_position.xyz, 1.0);
+	world_local_position = mat4(mat3(inverse(view_matrix))) * vec4(view_position.xyz, 1.0);
 
-	view_past_position = mat4(mat3(previous_scene_data.view_matrix)) * vec4(world_local_position.xyz, 1.0);
+	view_past_position = mat4(mat3(previous_view_matrix)) * vec4(world_local_position.xyz, 1.0);
 	
 	view_past_ndc = previous_scene_data.projection_matrix * view_past_position;
 
