@@ -1,5 +1,7 @@
 # Instructions
 
+**For Godot 4.7 users** there's a new and improved [Godot Motion Blur Addon](https://github.com/sphynx-owner/Godot-Motion-Blur-Addon) you can use.
+
 **For Godot 4.4 users:** I introduced a new Godot 4.4 branch with required fixes. Download from it instead.
 
 1. Take the contents of the "addons" folder and move them to an "addons" folder in your project.
